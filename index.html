@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbejdstid — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --surface2: #22222c;
+    --border: #2e2e3a;
+    --accent: #7fffb2;
+    --accent2: #ff7f6e;
+    --accent3: #7fb8ff;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; padding: 32px 24px; }
+
+  #setup-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,16,0.97);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(4px);
+  }
+  .setup-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 40px 44px; max-width: 540px; width: 100%;
+  }
+  .setup-box h2 { font-family:'Fraunces',serif; font-weight:300; font-size:1.8rem; margin-bottom:8px; }
+  .setup-box p { color:var(--muted); font-size:11px; line-height:1.7; margin-bottom:20px; }
+  .setup-step {
+    background: var(--surface2); border:1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .step-num {
+    display:inline-block; width:20px; height:20px; border-radius:50%;
+    background:var(--accent); color:var(--bg); font-size:10px;
+    text-align:center; line-height:20px; margin-right:8px; font-weight:500;
+  }
+  .step-title { font-size:12px; color:var(--text); margin-bottom:6px; }
+  .step-desc { font-size:10px; color:var(--muted); line-height:1.8; }
+  .step-desc a { color:var(--accent3); text-decoration:none; }
+  .step-desc a:hover { text-decoration:underline; }
+  .code-snippet {
+    display:inline-block; background:var(--bg); border:1px solid var(--border);
+    border-radius:4px; padding:2px 8px; font-family:'DM Mono',monospace;
+    font-size:10px; color:var(--accent); margin:2px 0; word-break:break-all;
+  }
+  .input-row { display:flex; flex-direction:column; gap:10px; margin-top:20px; }
+  .input-group label { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:4px; }
+  .input-group input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; color:var(--text); font-family:'DM Mono',monospace;
+    font-size:12px; outline:none; transition:border-color .2s;
+  }
+  .input-group input:focus { border-color:var(--accent3); }
+  .input-group input::placeholder { color:var(--muted); }
+  .btn-primary {
+    margin-top:20px; width:100%; padding:12px; border:none; border-radius:10px;
+    background:var(--accent); color:var(--bg); font-family:'DM Mono',monospace;
+    font-size:12px; font-weight:500; cursor:pointer; letter-spacing:1px;
+    transition:opacity .2s, transform .1s;
+  }
+  .btn-primary:hover { opacity:.85; }
+  .btn-primary:active { transform:scale(.99); }
+  .error-msg { color:var(--accent2); font-size:11px; margin-top:10px; min-height:16px; }
+
+  #loading {
+    display:none; position:fixed; inset:0; background:var(--bg);
+    align-items:center; justify-content:center; flex-direction:column; gap:16px; z-index:999;
+  }
+  .spinner {
+    width:40px; height:40px; border:2px solid var(--border);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loading p { color:var(--muted); font-size:11px; letter-spacing:1px; }
+
+  #dashboard { display:none; }
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px; flex-wrap:wrap; gap:16px; }
+  .topbar-left h1 { font-family:'Fraunces',serif; font-size:2.2rem; font-weight:300; letter-spacing:-.5px; }
+  .topbar-left .subtitle { color:var(--muted); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+  .topbar-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .live-badge {
+    display:flex; align-items:center; gap:6px; font-size:10px; color:var(--accent);
+    background:color-mix(in srgb,var(--accent) 12%,transparent);
+    padding:6px 12px; border-radius:20px; letter-spacing:1px;
+  }
+  .live-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+  .btn-refresh {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; padding:6px 14px;
+    cursor:pointer; transition:border-color .2s, color .2s;
+  }
+  .btn-refresh:hover { border-color:var(--accent3); color:var(--accent3); }
+  .btn-settings {
+    background:none; border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; padding:6px 12px;
+    cursor:pointer; transition:border-color .2s, color .2s;
+  }
+  .btn-settings:hover { border-color:var(--text); color:var(--text); }
+
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+  .card {
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:20px 22px; position:relative; overflow:hidden;
+    animation:fadeUp .5s ease both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--accent); opacity:.4; }
+  .card.warn::before { background:var(--accent2); }
+  .card.blue::before { background:var(--accent3); }
+  .card-label { color:var(--muted); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+  .card-value { font-family:'Fraunces',serif; font-size:2.4rem; font-weight:600; line-height:1; }
+  .card-unit { font-size:11px; color:var(--muted); margin-top:4px; }
+  .card-badge { display:inline-block; margin-top:8px; font-size:10px; padding:2px 8px; border-radius:20px; background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .card-badge.over { background:color-mix(in srgb,var(--accent2) 15%,transparent); color:var(--accent2); }
+
+  .row2 { display:grid; grid-template-columns:2fr 1.2fr; gap:16px; margin-bottom:24px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; animation:fadeUp .5s ease both; }
+  .chart-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+
+  .bar-wrap { display:flex; flex-direction:column; gap:6px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { width:60px; text-align:right; color:var(--muted); font-size:10px; flex-shrink:0; }
+  .bar-track { flex:1; height:20px; background:var(--surface2); border-radius:4px; overflow:hidden; position:relative; }
+  .bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent3),var(--accent)); position:relative; transition:width .8s cubic-bezier(.4,0,.2,1); }
+  .bar-fill.under { background:linear-gradient(90deg,#4a6fa5,var(--accent3)); }
+  .bar-norm-line { position:absolute; top:0;bottom:0; width:2px; background:var(--accent2); opacity:.6; }
+  .bar-val { width:42px; font-size:11px; color:var(--text); flex-shrink:0; }
+
+  .ring-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .ring-labels { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
+  .ring-lbl { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); }
+  .ring-dot { width:8px; height:8px; border-radius:50%; }
+
+  .day-bars { display:flex; gap:8px; align-items:flex-end; height:100px; }
+  .day-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .day-bar { width:100%; border-radius:4px 4px 0 0; background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 50%,transparent)); min-height:4px; }
+  .day-bar.weekend { background:linear-gradient(180deg,var(--accent3),color-mix(in srgb,var(--accent3) 50%,transparent)); }
+  .day-lbl { font-size:10px; color:var(--muted); }
+  .day-val { font-size:10px; color:var(--text); }
+
+  .day-table { width:100%; border-collapse:collapse; }
+  .day-table th { text-align:left; color:var(--muted); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; padding:0 0 10px; border-bottom:1px solid var(--border); }
+  .day-table td { padding:8px 0; border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent); font-size:12px; }
+  .day-table tr:last-child td { border-bottom:none; }
+  .timer-pill { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent); }
+  .timer-pill.high { background:color-mix(in srgb,var(--accent2) 12%,transparent); color:var(--accent2); }
+  .dot { width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.2;display:inline-block; }
+  .dot.filled { opacity:1; }
+  .dot.over { background:var(--accent2); }
+
+  .heatmap-wrap { overflow-x:auto; padding-bottom:4px; }
+  .heatmap-grid { display:flex; gap:3px; }
+  .hm-col { display:flex; flex-direction:column; gap:3px; }
+  .hm-cell { width:14px;height:14px;border-radius:3px;background:var(--surface2);cursor:pointer;transition:transform .1s;position:relative; }
+  .hm-cell:hover { transform:scale(1.4);z-index:10; }
+
+  .last-updated { font-size:10px; color:var(--muted); text-align:right; margin-top:16px; }
+
+  @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.row2,.row3{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid{grid-template-columns:1fr 1fr}.setup-box{padding:28px 20px}}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP ──────────────────────────────────────────────────────────── -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <h2>Forbind til OneDrive</h2>
+    <p>Første gang skal du indtaste dit Azure Client ID og stien til Excel-filen. Det gemmes i browseren og bruges automatisk fremover.</p>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">1</span>Opret Azure App Registration</div>
+      <div class="step-desc">
+        Gå til <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade" target="_blank">Azure Portal → App registrations → New registration</a><br><br>
+        · Navn: <em>Arbejdstid Dashboard</em><br>
+        · Account types: <em>Accounts in any organizational directory and personal Microsoft accounts</em><br>
+        · Redirect URI: <strong>Web</strong> →
+        <span class="code-snippet">https://k-stampe.github.io/arbejdstid-dashboard/</span><br><br>
+        Klik <strong>Register</strong> og kopiér <strong>Application (client) ID</strong>.
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">2</span>Tilføj API-rettigheder</div>
+      <div class="step-desc">
+        Under din app: <em>API permissions → Add a permission → Microsoft Graph → Delegated</em><br>
+        Tilføj: <span class="code-snippet">Files.Read</span> og <span class="code-snippet">Files.Read.All</span><br>
+        Klik derefter <strong>Grant admin consent</strong>.
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-title"><span class="step-num">3</span>Find fil-stien på OneDrive</div>
+      <div class="step-desc">
+        Åbn <a href="https://onedrive.live.com" target="_blank">onedrive.live.com</a>, find filen,
+        klik de tre prikker → <em>Detaljer</em> og notér stien.<br>
+        Eksempel: <span class="code-snippet">/Dokumenter/Arbejdstidsskema.xlsx</span>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <div class="input-group">
+        <label>Azure Client ID</label>
+        <input id="cfg-clientid" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+      </div>
+      <div class="input-group">
+        <label>OneDrive fil-sti</label>
+        <input id="cfg-filepath" type="text" placeholder="/Dokumenter/Arbejdstidsskema.xlsx" />
+      </div>
+    </div>
+
+    <div class="error-msg" id="setup-error"></div>
+    <button class="btn-primary" onclick="startAuth()">LOG IND MED MICROSOFT OG FORBIND →</button>
+    <div style="margin-top:14px;font-size:10px;color:var(--muted);text-align:center">
+      Dine oplysninger gemmes kun lokalt i din browser. Ingen data sendes til tredjeparter.
+    </div>
+  </div>
+</div>
+
+<!-- ── LOADING ────────────────────────────────────────────────────────── -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">HENTER DATA FRA ONEDRIVE...</p>
+</div>
+
+<!-- ── DASHBOARD ──────────────────────────────────────────────────────── -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Arbejdstid</h1>
+      <div class="subtitle" id="dash-subtitle">Indlæser...</div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div>LIVE · ONEDRIVE</div>
+      <button class="btn-refresh" onclick="refreshData()">↻ Opdater</button>
+      <button class="btn-settings" onclick="resetSetup()">⚙ Indstillinger</button>
+    </div>
+  </div>
+
+  <div class="grid" id="kpi-cards"></div>
+
+  <div class="row2">
+    <div class="chart-card">
+      <div class="chart-title">Timer pr. måned</div>
+      <div class="bar-wrap" id="monthly-bars"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Årsopgørelse</div>
+      <div class="ring-wrap">
+        <svg id="ring-svg" viewBox="0 0 180 180" width="180" height="180"></svg>
+        <div class="ring-labels" id="ring-labels"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:24px">
+    <div class="chart-title">Timer pr. uge</div>
+    <div id="weekly-wrap"><svg id="weekly-svg" width="100%" height="160"></svg></div>
+  </div>
+
+  <div class="row3">
+    <div class="chart-card">
+      <div class="chart-title">Gennemsnit pr. ugedag</div>
+      <div class="day-bars" id="day-bars"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Seneste arbejdsdage</div>
+      <table class="day-table" id="recent-table"></table>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Aktivitetskort</div>
+    <div class="heatmap-wrap"><div class="heatmap-grid" id="heatmap"></div></div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+      <span style="font-size:10px;color:var(--muted)">Ingen</span>
+      <div style="display:flex;gap:3px">
+        <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,var(--accent) 25%,var(--surface2))"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,var(--accent) 55%,var(--surface2))"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,var(--accent) 80%,var(--surface2))"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:var(--accent)"></div>
+      </div>
+      <span style="font-size:10px;color:var(--muted)">Mange timer</span>
+    </div>
+  </div>
+
+  <div class="last-updated" id="last-updated"></div>
+</div>
+
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+const STORAGE_KEY = 'arbejdstid_cfg';
+const REDIRECT_URI = 'https://k-stampe.github.io/arbejdstid-dashboard/';
+const NORM_UGE = 37, NORM_DAG = 7.4, NORM_MAANED = 160, NORM_AAR = 1920;
+
+let msalInstance = null;
+let cfg = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    cfg = JSON.parse(saved);
+    document.getElementById('cfg-clientid').value = cfg.clientId || '';
+    document.getElementById('cfg-filepath').value = cfg.filePath || '';
+    try {
+      await initMsal(cfg.clientId);
+      // Handle redirect callback (token comes back via redirect)
+      const result = await msalInstance.handleRedirectPromise();
+      if (result) {
+        // Successfully logged in via redirect
+        refreshData();
+      } else if (msalInstance.getAllAccounts().length > 0) {
+        // Already have a cached account
+        refreshData();
+      } else {
+        // Has config but no account — show setup so they can log in
+        document.getElementById('setup-overlay').style.display = 'flex';
+      }
+    } catch(e) {
+      document.getElementById('setup-overlay').style.display = 'flex';
+    }
+  }
+});
+
+function showError(msg) {
+  const el = document.getElementById('setup-error');
+  el.textContent = msg;
+}
+
+async function startAuth() {
+  const clientId = document.getElementById('cfg-clientid').value.trim();
+  const filePath = document.getElementById('cfg-filepath').value.trim();
+  if (!clientId || !filePath) { showError('Udfyld begge felter.'); return; }
+  if (!clientId.match(/^[0-9a-f-]{36}$/i)) { showError('Client ID ser forkert ud — det skal være et UUID på formen xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'); return; }
+
+  cfg = { clientId, filePath };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+
+  try {
+    await initMsal(clientId);
+    // Use redirect (works from GitHub Pages, no popup issues)
+    await msalInstance.loginRedirect({
+      scopes: ['Files.Read', 'Files.Read.All'],
+      redirectUri: REDIRECT_URI
+    });
+    // Page will reload after redirect — handled in window.load above
+  } catch(e) {
+    showError('Login fejlede: ' + e.message);
+  }
+}
+
+async function initMsal(clientId) {
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId,
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: REDIRECT_URI,
+      navigateToLoginRequestUrl: true
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
+  });
+  await msalInstance.initialize();
+}
+
+async function getToken() {
+  const scopes = ['Files.Read', 'Files.Read.All'];
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const res = await msalInstance.acquireTokenSilent({ scopes, account: accounts[0] });
+      return res.accessToken;
+    } catch(e) {
+      // Silent failed — try redirect
+    }
+  }
+  await msalInstance.acquireTokenRedirect({ scopes, redirectUri: REDIRECT_URI });
+  return null; // Page will reload
+}
+
+function setLoading(msg) {
+  document.getElementById('setup-overlay').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  if (msg) document.getElementById('loading-msg').textContent = msg;
+}
+
+function showDashboard() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+function resetSetup() {
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ── FETCH DATA ────────────────────────────────────────────────────────────────
+async function refreshData() {
+  setLoading('HENTER DATA FRA ONEDRIVE...');
+  try {
+    const token = await getToken();
+    if (!token) return; // redirect in progress
+
+    const filePath = cfg.filePath.startsWith('/') ? cfg.filePath : '/' + cfg.filePath;
+    const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:${encodeURIComponent(filePath)}:/workbook`;
+
+    setLoading('LÆSER EXCEL-ARK...');
+
+    // Get sheet list
+    const sheetsRes = await fetch(`${baseUrl}/worksheets`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!sheetsRes.ok) {
+      const errBody = await sheetsRes.text();
+      throw new Error(`Kunne ikke åbne fil (${sheetsRes.status}). Tjek at fil-stien er korrekt.\n${errBody}`);
+    }
+    const sheetsData = await sheetsRes.json();
+    const sheetNames = sheetsData.value.map(s => s.name);
+
+    const totalSheet = sheetNames.find(n =>
+      n.toLowerCase().includes('total') || n.toLowerCase().includes('arbejdstid')
+    );
+    if (!totalSheet) throw new Error(`Fandt ikke totalarket. Ark i filen: ${sheetNames.join(', ')}`);
+
+    setLoading('BEHANDLER DATA...');
+
+    const rangeRes = await fetch(
+      `${baseUrl}/worksheets('${encodeURIComponent(totalSheet)}')/usedRange`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!rangeRes.ok) throw new Error(`Fejl ved læsning af ark: ${rangeRes.statusText}`);
+
+    const rangeData = await rangeRes.json();
+    const parsed = parseData(rangeData.values);
+    renderDashboard(parsed);
+    document.getElementById('last-updated').textContent =
+      `Sidst opdateret: ${new Date().toLocaleString('da-DK')} · Kilde: OneDrive`;
+    showDashboard();
+
+  } catch(err) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('setup-overlay').style.display = 'flex';
+    showError('Fejl: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ── PARSE ─────────────────────────────────────────────────────────────────────
+function parseData(values) {
+  const n = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
+
+  const summary = {
+    total_timer: n(values[0]?.[1]),
+    gns_maaned:  n(values[1]?.[1]),
+    gns_uge:     n(values[2]?.[1]),
+    gns_dag:     n(values[3]?.[1]),
+    normtid:     n(values[0]?.[2]),
+    overtid:     n(values[4]?.[3]),
+  };
+
+  const allDays = [];
+  for (let i = 14; i < values.length; i++) {
+    const row = values[i];
+    if (!row || !row[7] || row[7] === 'Dato(er)') continue;
+    const rawDate = row[7];
+    const timer = parseFloat(row[10]);
+    const dag = (row[11] || '').toString().toLowerCase().trim();
+    if (!rawDate || isNaN(timer)) continue;
+
+    let d;
+    if (typeof rawDate === 'number') {
+      d = new Date((rawDate - 25569) * 86400 * 1000);
+    } else {
+      d = new Date(rawDate);
+    }
+    if (isNaN(d.getTime())) continue;
+
+    allDays.push({ dato: d.toISOString().slice(0,10), timer: Math.round((isNaN(timer)?0:timer)*1000)/1000, dag, d });
+  }
+  allDays.sort((a,b) => a.d - b.d);
+
+  // Monthly
+  const monthMap = {};
+  allDays.filter(x=>x.timer>0).forEach(x => {
+    const k = x.dato.slice(0,7);
+    monthMap[k] = (monthMap[k]||0) + x.timer;
+  });
+  const monthly = Object.entries(monthMap).sort().map(([k,t]) => {
+    const dt = new Date(k+'-01');
+    return { label: dt.toLocaleDateString('da-DK',{month:'short',year:'numeric'}), timer: Math.round(t*100)/100 };
+  });
+
+  // Weekly
+  const weekMap = {};
+  allDays.filter(x=>x.timer>0).forEach(x => {
+    const mon = new Date(x.d);
+    mon.setDate(x.d.getDate() - ((x.d.getDay()+6)%7));
+    const wk = mon.toISOString().slice(0,10);
+    if (!weekMap[wk]) weekMap[wk] = { label:`Uge ${getISOWeek(x.d)}`, timer:0, start:mon };
+    weekMap[wk].timer += x.timer;
+  });
+  const weekly = Object.values(weekMap).sort((a,b)=>a.start-b.start)
+    .map(w=>({label:w.label, timer:Math.round(w.timer*100)/100}));
+
+  // Day-of-week averages
+  const dagNames = ['mandag','tirsdag','onsdag','torsdag','fredag','lørdag','søndag'];
+  const dagShort = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const dagMap = {};
+  allDays.filter(x=>x.timer>0).forEach(x => {
+    if (!dagMap[x.dag]) dagMap[x.dag] = {sum:0,count:0};
+    dagMap[x.dag].sum += x.timer;
+    dagMap[x.dag].count++;
+  });
+  const dag = dagNames.map((n,i) => ({
+    dag: dagShort[i],
+    gns: dagMap[n] ? Math.round(dagMap[n].sum/dagMap[n].count*100)/100 : 0
+  })).filter(d=>d.gns>0);
+
+  return { summary, allDays, monthly, weekly, dag };
+}
+
+function getISOWeek(d) {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay()||7));
+  const y = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  return Math.ceil((((dt-y)/86400000)+1)/7);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderDashboard({ summary, allDays, monthly, weekly, dag }) {
+
+  // Subtitle
+  if (allDays.length > 0) {
+    const fmt = d => new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});
+    document.getElementById('dash-subtitle').textContent =
+      `${fmt(allDays[0].dato)} – ${fmt(allDays[allDays.length-1].dato)} · Kristian Nielsen`;
+  }
+
+  // KPI
+  const kpis = [
+    { label:'Timer i alt', value:summary.total_timer.toFixed(1), unit:'timer registreret',
+      badge:(summary.overtid>=0?'+':'')+summary.overtid.toFixed(1)+'t overtid', over:summary.overtid<0 },
+    { label:'Snit pr. uge', value:summary.gns_uge.toFixed(1), unit:`timer (norm: ${NORM_UGE}t)`,
+      badge:(summary.gns_uge>=NORM_UGE?'+':'')+(summary.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',
+      over:summary.gns_uge<NORM_UGE },
+    { label:'Snit pr. måned', value:summary.gns_maaned.toFixed(1), unit:'timer pr. måned',
+      badge:monthly.length+' måneder', cls:'blue' },
+    { label:'Snit pr. dag', value:summary.gns_dag.toFixed(2), unit:`timer (norm: ${NORM_DAG}t)`,
+      badge:(summary.gns_dag>=NORM_DAG?'+':'')+(summary.gns_dag-NORM_DAG).toFixed(2)+'t',
+      over:summary.gns_dag<NORM_DAG },
+  ];
+  document.getElementById('kpi-cards').innerHTML = kpis.map((c,i) => `
+    <div class="card ${c.cls||''}" style="animation-delay:${i*.08}s">
+      <div class="card-label">${c.label}</div>
+      <div class="card-value">${c.value}</div>
+      <div class="card-unit">${c.unit}</div>
+      <div class="card-badge ${c.over?'over':''}">${c.badge}</div>
+    </div>`).join('');
+
+  // Monthly bars
+  const maxM = Math.max(...monthly.map(m=>m.timer), NORM_MAANED+20);
+  document.getElementById('monthly-bars').innerHTML = monthly.map(m => {
+    const p = (m.timer/maxM*100).toFixed(1), np = (NORM_MAANED/maxM*100).toFixed(1);
+    return `<div class="bar-row">
+      <div class="bar-label">${m.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill ${m.timer<NORM_MAANED?'under':''}" style="width:${p}%">
+          <div class="bar-norm-line" style="left:${np}%"></div>
+        </div>
+      </div>
+      <div class="bar-val">${m.timer.toFixed(1)}t</div>
+    </div>`;
+  }).join('') + `<div style="margin-top:10px;font-size:10px;color:var(--muted)">
+    <span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Normtid (${NORM_MAANED}t/md)</div>`;
+
+  // Ring
+  const pct = Math.min(summary.total_timer/NORM_AAR,1);
+  const R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
+  document.getElementById('ring-svg').innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="14"/>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--accent)" stroke-width="14"
+      stroke-dasharray="${dash} ${circ}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" fill="var(--text)" font-size="22" font-family="Fraunces,serif" font-weight="600">${(pct*100).toFixed(0)}%</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" fill="var(--muted)" font-size="10">${summary.total_timer.toFixed(0)}t / ${NORM_AAR}t</text>
+    <text x="${cx}" y="${cy+28}" text-anchor="middle" fill="var(--accent)" font-size="10">af normår</text>`;
+  document.getElementById('ring-labels').innerHTML = `
+    <div class="ring-lbl"><div class="ring-dot" style="background:var(--accent)"></div>Arbejdet: ${summary.total_timer.toFixed(1)}t</div>
+    <div class="ring-lbl"><div class="ring-dot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: ${(NORM_AAR-summary.total_timer).toFixed(1)}t</div>`;
+
+  // Weekly chart
+  renderWeekly(weekly);
+
+  // Day bars
+  const maxD = Math.max(...dag.map(d=>d.gns));
+  document.getElementById('day-bars').innerHTML = dag.map(d => `
+    <div class="day-col">
+      <div class="day-val">${d.gns}t</div>
+      <div class="day-bar ${d.dag==='Lør'||d.dag==='Søn'?'weekend':''}" style="height:${(d.gns/maxD*80).toFixed(0)}px"></div>
+      <div class="day-lbl">${d.dag}</div>
+    </div>`).join('');
+
+  // Recent table
+  const dNames = {mandag:'Man',tirsdag:'Tir',onsdag:'Ons',torsdag:'Tor',fredag:'Fre',lørdag:'Lør',søndag:'Søn'};
+  const recent = allDays.filter(x=>x.timer>0).slice(-10).reverse();
+  document.getElementById('recent-table').innerHTML = `<thead><tr>
+    <th>Dato</th><th>Dag</th><th>Timer</th><th>Ift. norm</th>
+  </tr></thead><tbody>` + recent.map(d => {
+    const dt = new Date(d.dato);
+    const diff = d.timer - NORM_DAG;
+    const dots = Array.from({length:13},(_,i) =>
+      `<span class="dot ${i<Math.round(d.timer)?'filled':''} ${i>=7&&i<Math.round(d.timer)?'over':''}"></span>`).join('');
+    return `<tr>
+      <td style="color:var(--muted)">${dt.getDate()}/${dt.getMonth()+1}</td>
+      <td>${dNames[d.dag]||d.dag}</td>
+      <td><span class="timer-pill ${d.timer>9?'high':''}">${d.timer.toFixed(2)}t</span></td>
+      <td><div style="display:flex;align-items:center;gap:3px">${dots}
+        <span style="margin-left:4px;font-size:10px;color:${diff>=0?'var(--accent)':'var(--accent2)'}">${diff>=0?'+':''}${diff.toFixed(1)}t</span>
+      </div></td>
+    </tr>`;
+  }).join('') + '</tbody>';
+
+  // Heatmap
+  renderHeatmap(allDays);
+}
+
+function renderWeekly(weekly) {
+  const wrap = document.getElementById('weekly-wrap');
+  const W = wrap.clientWidth || 700;
+  const H=160, pL=8, pR=8, pT=18, pB=30;
+  const iW=W-pL-pR, iH=H-pT-pB;
+  const vals = weekly.map(w=>w.timer);
+  const maxV=Math.max(...vals)+3, minV=10;
+  const xS = weekly.length>1 ? iW/(weekly.length-1) : iW;
+  const yS = v => pT+iH-(v-minV)/(maxV-minV)*iH;
+  const xP = i => pL+i*xS;
+  const normY = yS(NORM_UGE);
+  const pts = weekly.map((w,i)=>`${xP(i)},${yS(w.timer)}`).join(' ');
+  const ac = `${xP(weekly.length-1)},${pT+iH} ${xP(0)},${pT+iH}`;
+  const lp = weekly.map((w,i)=>`${i===0?'M':'L'}${xP(i)},${yS(w.timer)}`).join(' ');
+
+  let svg = `<svg id="weekly-svg" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="aG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <line x1="${pL}" y1="${normY}" x2="${W-pR}" y2="${normY}" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+    <text x="${W-pR-2}" y="${normY-4}" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.7" font-family="DM Mono,monospace">norm ${NORM_UGE}t</text>
+    <polygon points="${pts} ${ac}" fill="url(#aG)"/>
+    <path d="${lp}" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>`;
+
+  weekly.forEach((w,i) => {
+    const x=xP(i), y=yS(w.timer), show=i%2===0||i===weekly.length-1;
+    svg += `<circle cx="${x}" cy="${y}" r="3.5" fill="${w.timer>=NORM_UGE?'#7fffb2':'#ff7f6e'}" stroke="#0f0f13" stroke-width="1.5"><title>${w.label}: ${w.timer}t</title></circle>`;
+    if(show) svg += `<text x="${x}" y="${H-8}" text-anchor="middle" font-size="9" fill="#6b6b80" font-family="DM Mono,monospace">${w.label}</text>`;
+  });
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+}
+
+function renderHeatmap(allDays) {
+  const dayMap = {};
+  allDays.forEach(d => { dayMap[d.dato] = d.timer; });
+  if (!allDays.length) return;
+
+  const minDate = new Date(allDays[0].d); minDate.setDate(1);
+  const maxDate = new Date(allDays[allDays.length-1].d);
+  const maxH = Math.max(...allDays.map(d=>d.timer), 1);
+
+  let cur = new Date(minDate);
+  while (cur.getDay()!==1) cur.setDate(cur.getDate()-1);
+
+  const el = document.getElementById('heatmap');
+  el.innerHTML = '';
+
+  const lblCol = document.createElement('div');
+  lblCol.className = 'hm-col';
+  ['M','T','O','T','F','L','S'].forEach(l => {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b6b80';
+    d.textContent = l;
+    lblCol.appendChild(d);
+  });
+  el.appendChild(lblCol);
+
+  const end = new Date(maxDate); end.setDate(end.getDate()+8);
+  let col = [], cols = [];
+  while (cur <= end) {
+    const ds = cur.toISOString().slice(0,10);
+    col.push({ds, h:dayMap[ds]||0, inRange: cur>=minDate&&cur<=maxDate});
+    if (col.length===7) { cols.push(col); col=[]; }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(col.length){while(col.length<7)col.push({ds:'',h:0,inRange:false});cols.push(col);}
+
+  cols.forEach(col => {
+    const colEl = document.createElement('div');
+    colEl.className = 'hm-col';
+    col.forEach(({ds,h,inRange}) => {
+      const cell = document.createElement('div');
+      cell.className = 'hm-cell';
+      if (inRange && h>0) {
+        const pct = Math.round((h/maxH)*90+10);
+        cell.style.background = `color-mix(in srgb, #7fffb2 ${pct}%, #22222c)`;
+        const dt = new Date(ds);
+        cell.title = `${dt.getDate()}/${dt.getMonth()+1}: ${h.toFixed(1)}t`;
+      } else if (!inRange||!ds) {
+        cell.style.opacity = '0';
+      }
+      colEl.appendChild(cell);
+    });
+    el.appendChild(colEl);
+  });
+}
+</script>
+</body>
+</html>
