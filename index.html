@@ -8,611 +8,337 @@
 <style>
 :root {
   --bg: #f4f7fa;          /* Lys grå-blå baggrund */
-  --surface: #ffffff;     /* Ren hvid til kort/bokse */
-  --surface2: #e9ecef;    /* Lidt mørkere lys grå til felter */
-  --border: #d1d9e6;      /* Blød kantfarve */
-  --accent: #10b981;      /* En mere læselig grøn på hvid bund */
-  --accent2: #e11d48;      /* En klar rød til advarsler/overtid */
-  --accent3: #2563eb;      /* En dyb blå til grafer */
-  --text: #1e293b;        /* Meget mørk grå (næsten sort) tekst */
-  --muted: #64748b;       /* Mellemgrå til hjælpetekster */
+  --surface: #ffffff;     /* Hvid til kort */
+  --surface2: #e9ecef;    /* Lys grå til felter */
+  --border: #d1d9e6;      /* Blød kant */
+  --accent: #10b981;      /* Grøn */
+  --accent2: #e11d48;     /* Rød */
+  --accent3: #2563eb;     /* Blå */
+  --text: #1e293b;        /* Mørk tekst */
+  --muted: #64748b;       /* Grå tekst */
 }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; }
 
 #setup { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-.box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px 40px; max-width: 520px; width: 100%; }
-.box h2 { font-family: 'Fraunces', serif; font-weight: 300; font-size: 1.8rem; margin-bottom: 6px; }
-.box .sub { color: var(--muted); font-size: 11px; line-height: 1.7; margin-bottom: 24px; }
-.step { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; font-size: 11px; color: var(--muted); line-height: 1.8; }
-.step strong { color: var(--text); }
-.step a { color: var(--accent3); text-decoration: none; }
-.step a:hover { text-decoration: underline; }
-.chip { display: inline-block; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px; font-size: 10px; color: var(--accent); font-family: 'DM Mono', monospace; }
-label { display: block; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; margin-top: 14px; }
-input[type=text] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; outline: none; transition: border-color .2s; }
-input[type=text]:focus { border-color: var(--accent3); }
-input[type=text]::placeholder { color: var(--muted); }
-.btn { margin-top: 20px; width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--accent); color: var(--bg); font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 1px; cursor: pointer; transition: opacity .2s; }
-.btn:hover { opacity: .85; }
-.btn:disabled { opacity: .5; cursor: default; }
-.errmsg { margin-top: 12px; padding: 10px 14px; background: color-mix(in srgb, var(--accent2) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); border-radius: 8px; color: var(--accent2); font-size: 11px; line-height: 1.6; display: none; white-space: pre-wrap; word-break: break-all; }
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+h1 { font-family: 'Fraunces', serif; font-weight: 300; font-size: 28px; margin-bottom: 8px; }
+.sub { color: var(--muted); margin-bottom: 32px; }
 
-#loading { display: none; min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
-.spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+button { background: var(--text); color: var(--bg); border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 500; width: 100%; transition: opacity 0.2s; }
+button:hover { opacity: 0.9; }
 
-#dash { display: none; padding: 32px 24px; }
-.topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; flex-wrap: wrap; gap: 16px; }
-.topbar h1 { font-family: 'Fraunces', serif; font-size: 2.2rem; font-weight: 300; letter-spacing: -.5px; }
-.topbar .sub2 { color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
-.tbright { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.livebadge { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 6px 12px; border-radius: 20px; }
-.livedot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
-.smBtn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 12px; cursor: pointer; transition: color .2s, border-color .2s; }
-.smBtn:hover { color: var(--text); border-color: var(--accent3); }
+#dashboard { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
 
-.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
-.card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: .4; }
-.card.b::before { background: var(--accent3); }
-.clabel { color: var(--muted); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
-.cval { font-family: 'Fraunces', serif; font-size: 2.4rem; font-weight: 600; line-height: 1; }
-.cunit { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.cbadge { display: inline-block; margin-top: 8px; font-size: 10px; padding: 2px 8px; border-radius: 20px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
-.cbadge.o { background: color-mix(in srgb, var(--accent2) 15%, transparent); color: var(--accent2); }
+/* KPI Grid - Nu med 5 kort */
+.grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent3); opacity: 0.5; }
+.card.flex::before { background: var(--accent2); opacity: 1; } /* Særlig farve til fleks */
+.clabel { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.cval { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.cunit { font-size: 11px; color: var(--muted); }
+.cbadge { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--surface2); color: var(--muted); }
+.cbadge.o { background: rgba(225, 29, 72, 0.1); color: var(--accent2); }
 
-.row2 { display: grid; grid-template-columns: 2fr 1.2fr; gap: 16px; margin-bottom: 24px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-.cc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-.ct { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+/* Grafer */
+.main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; margin-bottom: 24px; }
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.stitle { font-family: 'Fraunces', serif; font-size: 18px; margin-bottom: 20px; display: flex; justify-content: space-between; }
 
-.barwrap { display: flex; flex-direction: column; gap: 6px; }
-.brow { display: flex; align-items: center; gap: 10px; }
-.blbl { width: 60px; text-align: right; color: var(--muted); font-size: 10px; flex-shrink: 0; }
-.btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
-.bfill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent3), var(--accent)); position: relative; transition: width .8s cubic-bezier(.4,0,.2,1); }
-.bfill.u { background: linear-gradient(90deg, #4a6fa5, var(--accent3)); }
-.bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); opacity: .6; }
-.bval { width: 42px; font-size: 11px; flex-shrink: 0; }
+.brow { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.blbl { width: 80px; font-size: 11px; color: var(--muted); }
+.btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; position: relative; overflow: hidden; }
+.bfill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; transition: width 1s ease-out; }
+.bfill.u { background: var(--border); }
+.bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); z-index: 2; }
+.bval { width: 50px; text-align: right; font-size: 11px; font-weight: 500; }
 
-.ringwrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.ringlbls { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-.rlbl { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
-.rdot { width: 8px; height: 8px; border-radius: 50%; }
+/* Ring graf */
+.ring-box { display: flex; justify-content: center; align-items: center; position: relative; height: 200px; }
+svg { transform: rotate(-90deg); }
+circle { fill: none; stroke-width: 12; stroke-linecap: round; }
+.r-bg { stroke: var(--surface2); }
+.r-main { stroke: var(--accent); transition: stroke-dashoffset 1s ease-out; }
+.r-info { position: absolute; text-align: center; }
+.r-pct { font-family: 'Fraunces', serif; font-size: 32px; font-weight: 600; line-height: 1; }
 
-.daybars { display: flex; gap: 8px; align-items: flex-end; height: 100px; }
-.dcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.dbar { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 50%, transparent)); min-height: 4px; }
-.dbar.we { background: linear-gradient(180deg, var(--accent3), color-mix(in srgb, var(--accent3) 50%, transparent)); }
-.dlbl { font-size: 10px; color: var(--muted); }
-.dval { font-size: 10px; color: var(--text); }
-
-.dtbl { width: 100%; border-collapse: collapse; }
-.dtbl th { text-align: left; color: var(--muted); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding: 0 0 10px; border-bottom: 1px solid var(--border); }
-.dtbl td { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); font-size: 12px; }
-.dtbl tr:last-child td { border-bottom: none; }
-.pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-.pill.h { background: color-mix(in srgb, var(--accent2) 12%, transparent); color: var(--accent2); }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .2; display: inline-block; }
-.dot.f { opacity: 1; }
-.dot.ov { background: var(--accent2); }
-
-.hmwrap { overflow-x: auto; padding-bottom: 4px; }
-.hmgrid { display: flex; gap: 3px; }
+#heatmap { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 8px; }
 .hmcol { display: flex; flex-direction: column; gap: 3px; }
-.hmcell { width: 14px; height: 14px; border-radius: 3px; background: var(--surface2); cursor: default; transition: transform .1s; }
-.hmcell:hover { transform: scale(1.4); z-index: 10; }
-.lastupdated { font-size: 10px; color: var(--muted); text-align: right; margin-top: 16px; }
+.hmcell { width: 12px; height: 12px; border-radius: 2px; background: var(--surface2); }
 
-@media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr)} .row2,.row3{grid-template-columns:1fr} }
-@media(max-width:500px){ .grid4{grid-template-columns:1fr 1fr} .box{padding:24px 18px} }
+@media(max-width: 1100px) { .grid5 { grid-template-columns: repeat(3, 1fr); } .main-grid { grid-template-columns: 1fr; } }
+@media(max-width: 700px) { .grid5 { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
 
 <div id="setup">
   <div class="box">
-    <h2>Forbind til OneDrive</h2>
-    <p class="sub">Opsaetning tager ca. 5 minutter og skal kun goeres een gang.</p>
-
-    <div class="step">
-      <strong>Trin 1 - Azure App Registration</strong><br>
-      Ga til <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade" target="_blank">Azure Portal</a>
-      og log ind med din <strong>private</strong> Microsoft-konto.<br>
-      App registrations &rarr; New registration<br>
-      &bull; Navn: Arbejdstid Dashboard<br>
-      &bull; Account types: <em>...personal Microsoft accounts</em><br>
-      &bull; Redirect URI: Web &rarr; <span class="chip">https://k-stampe.github.io/arbejdstid-dashboard/</span><br>
-      Klik Register og kopieer <strong>Application (client) ID</strong>
-    </div>
-
-    <div class="step">
-      <strong>Trin 2 - API-rettigheder</strong><br>
-      API permissions &rarr; Add &rarr; Microsoft Graph &rarr; Delegated<br>
-      Tilfoj: <span class="chip">Files.Read</span> og <span class="chip">Files.Read.All</span><br>
-      Klik <strong>Grant admin consent</strong>
-    </div>
-
-    <label>Azure Client ID</label>
-    <input type="text" id="inp-cid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
-
-    <label>OneDrive fil-sti</label>
-    <input type="text" id="inp-path" placeholder="/Arbejdstidsskema.xlsx" autocomplete="off" />
-
-    <button class="btn" id="loginBtn" onclick="doLogin()">LOG IND MED MICROSOFT OG FORBIND &rarr;</button>
-    <div class="errmsg" id="errmsg"></div>
-    <p style="margin-top:14px;font-size:10px;color:var(--muted);text-align:center">Data gemmes kun lokalt i din browser.</p>
+    <h1>Arbejdsliv</h1>
+    <p class="sub">Log ind for at hente data fra OneDrive</p>
+    <button onclick="login()">Forbind med Microsoft</button>
   </div>
 </div>
 
-<div id="loading">
-  <div class="spinner"></div>
-  <p id="loadmsg" style="color:var(--muted);font-size:11px;letter-spacing:1px">HENTER DATA...</p>
-</div>
-
-<div id="dash">
-  <div class="topbar">
-    <div>
-      <h1>Arbejdstid</h1>
-      <div class="sub2" id="dsub">Indlaeder...</div>
-    </div>
-    <div class="tbright">
-      <div class="livebadge"><div class="livedot"></div>LIVE &middot; ONEDRIVE</div>
-      <button class="smBtn" onclick="loadData()">&#8635; Opdater</button>
-      <button class="smBtn" onclick="doReset()">&#9881; Indstillinger</button>
-    </div>
+<div id="dashboard">
+  <div class="header">
+    <h1>Overblik</h1>
+    <div id="user" style="color:var(--muted); font-size:11px;"></div>
   </div>
-  <div class="grid4" id="kpis"></div>
-  <div class="row2">
-    <div class="cc"><div class="ct">Timer pr. maaned</div><div class="barwrap" id="monthbars"></div></div>
-    <div class="cc"><div class="ct">Aarsopgoerelse</div>
-      <div class="ringwrap">
-        <svg id="ringsvg" viewBox="0 0 180 180" width="180" height="180"></svg>
-        <div class="ringlbls" id="ringlbls"></div>
+
+  <div id="kpis" class="grid5"></div>
+
+  <div class="main-grid">
+    <div class="section">
+      <div class="stitle">Timer pr. måned <span>Norm: 160t</span></div>
+      <div id="monthbars"></div>
+    </div>
+    <div class="section">
+      <div class="stitle">Arbejdsfordeling</div>
+      <div class="ring-box">
+        <svg width="160" height="160">
+          <circle class="r-bg" cx="80" cy="80" r="70"></circle>
+          <circle id="rcircle" class="r-main" cx="80" cy="80" r="70"></circle>
+        </svg>
+        <div class="r-info">
+          <div id="rpct" class="r-pct">0%</div>
+          <div style="font-size:10px; color:var(--muted)">af årsnorm</div>
+        </div>
       </div>
+      <div id="daydist" style="margin-top:20px"></div>
     </div>
   </div>
-  <div class="cc" style="margin-bottom:24px"><div class="ct">Timer pr. uge</div><div id="wkwrap"></div></div>
-  <div class="row3">
-    <div class="cc"><div class="ct">Gennemsnit pr. ugedag</div><div class="daybars" id="daybars"></div></div>
-    <div class="cc"><div class="ct">Seneste arbejdsdage</div><table class="dtbl" id="recenttbl"></table></div>
+
+  <div class="section">
+    <div class="stitle">Aktivitet (sidste 12 måneder)</div>
+    <div id="heatmap"></div>
   </div>
-  <div class="cc">
-    <div class="ct">Aktivitetskort</div>
-    <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
-    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-      <span style="font-size:10px;color:var(--muted)">Ingen</span>
-      <div style="display:flex;gap:3px">
-        <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 25%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 55%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 80%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:#7fffb2"></div>
-      </div>
-      <span style="font-size:10px;color:var(--muted)">Mange timer</span>
-    </div>
-  </div>
-  <div class="lastupdated" id="lastupdated"></div>
 </div>
 
+<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <script>
-// Load MSAL dynamically
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js';
-  s.onerror = function() {
-    var s2 = document.createElement('script');
-    s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
-    document.head.appendChild(s2);
-  };
-  document.head.appendChild(s);
-})();
-</script>
-
-<script>
-var CFG_KEY = 'atid_cfg3';
-var REDIRECT = 'https://k-stampe.github.io/arbejdstid-dashboard/';
-var NORM_UGE = 37, NORM_DAG = 7.4, NORM_MD = 160, NORM_AAR = 1920;
-var msalApp = null;
-var cfg = null;
-
-function showErr(msg) {
-  var el = document.getElementById('errmsg');
-  el.style.display = 'block';
-  el.textContent = msg;
-}
-function hideErr() { document.getElementById('errmsg').style.display = 'none'; }
-
-function showSetup() {
-  document.getElementById('setup').style.display = 'flex';
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('dash').style.display = 'none';
-}
-function showLoading(msg) {
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('dash').style.display = 'none';
-  if (msg) document.getElementById('loadmsg').textContent = msg;
-}
-function showDash() {
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('dash').style.display = 'block';
-}
-function doReset() { localStorage.removeItem(CFG_KEY); location.reload(); }
-
-function waitMsal(cb) {
-  var tries = 0;
-  var iv = setInterval(function() {
-    var lib = window.msalBrowser || window.msal;
-    if (lib) { clearInterval(iv); cb(null, lib); return; }
-    if (++tries > 80) { clearInterval(iv); cb(new Error('MSAL kunne ikke indlaeses. Tjek din netvaerksforbindelse og genindlaes siden.')); }
-  }, 100);
-}
-
-function buildMsal(lib, clientId) {
-  return new lib.PublicClientApplication({
-    auth: {
-      clientId: clientId,
-      authority: 'https://login.microsoftonline.com/consumers',
-      redirectUri: REDIRECT
-    },
-    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
-  });
-}
-
-// On page load
-window.addEventListener('load', function() {
-  var saved = localStorage.getItem(CFG_KEY);
-  if (!saved) return;
-  cfg = JSON.parse(saved);
-  document.getElementById('inp-cid').value = cfg.clientId || '';
-  document.getElementById('inp-path').value = cfg.filePath || '';
-
-  waitMsal(function(err, lib) {
-    if (err) { showSetup(); showErr(err.message); return; }
-    try {
-      msalApp = buildMsal(lib, cfg.clientId);
-      var p = typeof msalApp.initialize === 'function' ? msalApp.initialize() : Promise.resolve();
-      p.then(function() {
-        var accts = msalApp.getAllAccounts();
-        if (accts && accts.length > 0) {
-          loadData();
-        } else {
-          showSetup();
-        }
-      }).catch(function(e) { showSetup(); showErr('Opstartsfejl: ' + e.message); });
-    } catch(e) { showSetup(); showErr('Fejl: ' + e.message); }
-  });
-});
-
-function doLogin() {
-  hideErr();
-  var clientId = document.getElementById('inp-cid').value.trim();
-  var filePath = document.getElementById('inp-path').value.trim();
-  if (!clientId) { showErr('Indtast dit Azure Client ID.'); return; }
-  if (!filePath) { showErr('Indtast stien til din Excel-fil, fx /Arbejdstidsskema.xlsx'); return; }
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) {
-    showErr('Client ID ser forkert ud.\nDet skal vaere et UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'); return;
+// KONFIGURATION - Behold din ClientID her!
+const msalConfig = {
+  auth: {
+    clientId: 'a40f803c-742a-4467-bc13-8d6935da6696',
+    authority: 'https://login.microsoftonline.com/consumers',
+    redirectUri: window.location.origin + window.location.pathname
   }
+};
 
-  cfg = { clientId: clientId, filePath: filePath };
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+const msalInst = new msal.PublicClientApplication(msalConfig);
+const FILE_NAME = "Arbejdstidsskema.xlsx"; 
 
-  var btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.textContent = 'VENTER PA MSAL...';
-
-  waitMsal(function(err, lib) {
-    if (err) { showErr(err.message); btn.disabled = false; btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192'; return; }
-    try {
-      msalApp = buildMsal(lib, clientId);
-      var initP = typeof msalApp.initialize === 'function' ? msalApp.initialize() : Promise.resolve();
-      initP.then(function() {
-        btn.textContent = 'ABNER MICROSOFT LOGIN...';
-        // Allow popups - user must allow popup for this domain
-        return msalApp.loginPopup({
-          scopes: ['Files.Read', 'Files.Read.All'],
-          prompt: 'select_account'
-        });
-      }).then(function(result) {
-        if (result && result.account) {
-          loadData();
-        } else {
-          showErr('Login returnerede ingen konto. Proev igen.');
-          btn.disabled = false;
-          btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
-        }
-      }).catch(function(e) {
-        var msg = e.message || String(e);
-        if (/popup|block/i.test(msg)) {
-          showErr('Popup blev blokeret af din browser.\n\nSaadan tillader du popups i Chrome:\n1. Klik pa adresselinjens ikon (blokeret popup)\n2. Vaelg "Tillad altid popups fra dette sted"\n3. Proev igen.');
-        } else if (/cancel|user_cancel/i.test(msg)) {
-          showErr('Login blev annulleret. Proev igen.');
-        } else {
-          showErr('Login fejlede:\n' + msg);
-        }
-        btn.disabled = false;
-        btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
-      });
-    } catch(e) {
-      showErr('Uventet fejl: ' + e.message);
-      btn.disabled = false;
-      btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
-    }
-  });
+async function login() {
+  try {
+    const res = await msalInst.loginPopup({ scopes: ["files.read"] });
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('user').textContent = res.account.username;
+    loadData();
+  } catch(e) { console.error(e); alert("Login fejlede: " + e.message); }
 }
 
-function getToken() {
-  var scopes = ['Files.Read', 'Files.Read.All'];
-  var accts = msalApp.getAllAccounts();
-  var silent = accts && accts.length > 0
-    ? msalApp.acquireTokenSilent({ scopes: scopes, account: accts[0] })
-    : Promise.reject(new Error('no account'));
-  return silent.catch(function() {
-    return msalApp.acquireTokenPopup({ scopes: scopes });
-  }).then(function(r) { return r.accessToken; });
+async function loadData() {
+  try {
+    const accounts = msalInst.getAllAccounts();
+    const tokenRes = await msalInst.acquireTokenSilent({ scopes: ["files.read"], account: accounts[0] });
+    const authH = { 'Authorization': 'Bearer ' + tokenRes.accessToken };
+
+    const search = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/search(q='${FILE_NAME}')`, { headers: authH });
+    const searchRes = await search.json();
+    const file = searchRes.value.find(f => f.name === FILE_NAME);
+    
+    if(!file) throw new Error("Filen blev ikke fundet på OneDrive.");
+
+    const dataRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/workbook/worksheets('Arbejdstid total')/usedRange`, { headers: authH });
+    const json = await dataRes.json();
+    
+    const dashboardData = parseData(json.values);
+    renderAll(dashboardData);
+  } catch(e) { console.error(e); }
 }
 
-function loadData() {
-  showLoading('HENTER DATA FRA ONEDRIVE...');
-  getToken().then(function(token) {
-    var fp = cfg.filePath.startsWith('/') ? cfg.filePath : '/' + cfg.filePath;
-    var base = 'https://graph.microsoft.com/v1.0/me/drive/root:' + encodeURIComponent(fp) + ':/workbook';
-    showLoading('LAESЕР EXCEL-ARK...');
-    return fetch(base + '/worksheets', { headers: { Authorization: 'Bearer ' + token } })
-      .then(function(r) {
-        if (!r.ok) return r.text().then(function(body) {
-          var parsed; try { parsed = JSON.parse(body); } catch(e) {}
-          var detail = parsed && parsed.error ? parsed.error.message : body.slice(0,200);
-          throw new Error('Fil ikke fundet (' + r.status + '): ' + detail + '\n\nTjek at fil-stien er korrekt: ' + fp);
-        });
-        return r.json();
-      }).then(function(data) {
-        var names = data.value.map(function(s) { return s.name; });
-        var sheet = names.find(function(n) { return /total|arbejdstid/i.test(n); });
-        if (!sheet) throw new Error('Fandt ikke totalarket.\nArk i filen: ' + names.join(', '));
-        showLoading('BEHANDLER DATA...');
-        return fetch(base + '/worksheets(\'' + encodeURIComponent(sheet) + '\')/usedRange', {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-      }).then(function(r) {
-        if (!r.ok) throw new Error('Fejl ved laesning: ' + r.status + ' ' + r.statusText);
-        return r.json();
-      }).then(function(data) {
-        var parsed = parseData(data.values);
-        renderAll(parsed);
-        document.getElementById('lastupdated').textContent =
-          'Sidst opdateret: ' + new Date().toLocaleString('da-DK') + ' - Kilde: OneDrive';
-        showDash();
-      });
-  }).catch(function(err) {
-    showSetup();
-    showErr('Fejl:\n' + (err.message || String(err)));
-    console.error(err);
-  });
-}
-
+// ---- PARSER (RETTET) ----
 function parseData(values) {
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
   
-  // Find rækker baseret på labels i kolonne A (index 0)
-  function findRow(label) {
-    return values.find(row => row[0] && String(row[0]).toLowerCase().includes(label.toLowerCase()));
-  }
+  // Find summary rækker ved at lede efter tekst-labels
+  const findRow = (label) => values.find(r => r[0] && String(r[0]).toLowerCase().includes(label.toLowerCase()));
 
-  var rowTotal = findRow('Pr. år');
-  var rowMd = findRow('Gns pr. måned');
-  var rowUge = findRow('Gns pr. uge');
-  var rowDag = findRow('Gns pr. dag');
-  var rowFlex = findRow('Overtid total');
+  const rowTotal = findRow('Pr. år');
+  const rowFlex  = findRow('Overtid total');
+  const rowMd    = findRow('Gns pr. måned');
+  const rowUge   = findRow('Gns pr. uge');
+  const rowDag   = findRow('Gns pr. dag');
 
-  var summary = {
+  const summary = {
     total: n(rowTotal && rowTotal[1]),
     gns_md: n(rowMd && rowMd[1]),
     gns_uge: n(rowUge && rowUge[1]),
     gns_dag: n(rowDag && rowDag[1]),
-    normtid: n(rowTotal && rowTotal[2]),
-    // Vi bruger den specifikke flex-saldo (Overtid total) til badgen
-    overtid: n(rowFlex && rowFlex[3]) 
+    overtid: n(rowFlex && rowFlex[3]), // Selve saldoen
+    norm_aar: n(rowTotal && rowTotal[2])
   };
 
-  var days = [];
-  // Data-listen i dit ark starter efter række 15 (overskrifterne)
-  for (var i = 15; i < values.length; i++) {
-    var row = values[i];
-    // Vi kigger i kolonne H (index 7) for datoen i den højre tabel
-    if (!row || !row[7] || row[7] === 'Dato(er)') continue;
+  const days = [];
+  // Læs fra række 15 (index 14) og frem. Tjekker både venstre og højre tabel i arket.
+  for (let i = 14; i < values.length; i++) {
+    const row = values[i];
+    if (!row) continue;
+
+    const configs = [{d:0, h:3, n:5}, {d:7, h:10, n:11}]; // d=dato, h=timer, n=navn
     
-    var raw = row[7], timer = parseFloat(row[10]), dag = String(row[11] || '').toLowerCase().trim(), d;
-    
-    if (typeof raw === 'number') { 
-        d = new Date((raw - 25569) * 86400000); 
-    } else { 
-        d = new Date(raw); 
-    }
-    
-    if (isNaN(d.getTime())) continue;
-    days.push({ 
-        dato: d.toISOString().slice(0,10), 
-        timer: isNaN(timer) ? 0 : Math.round(timer*1000)/1000, 
-        dag: dag, 
-        d: d 
+    configs.forEach(conf => {
+      const rawDate = row[conf.d];
+      const timer = n(row[conf.h]);
+      const dagNavn = String(row[conf.n] || '').toLowerCase().trim();
+
+      if (rawDate && timer > 0) { // KUN dage med faktiske timer (fjerner weekend-spøgelser)
+        let d;
+        if (typeof rawDate === 'number') { d = new Date((rawDate - 25569) * 86400000); }
+        else { d = new Date(rawDate); }
+        
+        if (!isNaN(d.getTime())) {
+          days.push({ dato: d.toISOString().slice(0,10), timer: timer, dag: dagNavn, d: d });
+        }
+      }
     });
   }
-  
-  // Sortering og opsamling til grafer
-  days.sort((a,b) => a.d - b.d);
 
-  var mmap = {};
-  days.filter(x => x.timer > 0).forEach(x => { 
-    var k = x.dato.slice(0,7); 
-    mmap[k] = (mmap[k] || 0) + x.timer; 
-  });
+  days.sort((a,b) => a.d - b.d);
   
-  var monthly = Object.keys(mmap).sort().map(k => ({
+  // Måneds-samling
+  const mmap = {};
+  days.forEach(x => { const k = x.dato.slice(0,7); mmap[k] = (mmap[k] || 0) + x.timer; });
+  const monthly = Object.keys(mmap).sort().map(k => ({
     label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}),
-    timer: Math.round(mmap[k]*100)/100
+    timer: mmap[k]
   }));
 
-  var wmap = {};
-  days.filter(x => x.timer > 0).forEach(x => {
-    var mon = new Date(x.d); 
-    mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
-    var wk = mon.toISOString().slice(0,10);
+  // Uge-samling
+  const wmap = {};
+  days.forEach(x => {
+    const mon = new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
+    const wk = mon.toISOString().slice(0,10);
     if (!wmap[wk]) wmap[wk] = { label:'Uge '+isoWeek(x.d), timer:0, start:mon };
     wmap[wk].timer += x.timer;
   });
+  const weekly = Object.values(wmap).sort((a,b) => a.start-b.start).map(w => ({ label: w.label, timer: w.timer }));
 
-  var weekly = Object.values(wmap).sort((a,b) => a.start-b.start).map(w => ({
-    label: w.label, timer: Math.round(w.timer*100)/100
-  }));
-
-  var dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
-  var dagShort = ['Man','Tir','Ons','Tor','Fre','Lor','Son'];
-  var dmap = {};
-  days.filter(x => x.timer > 0).forEach(x => {
-    var d2 = x.dag.replace(/\u00f8/g,'o').replace(/\u00e6/g,'ae').replace(/\u00e5/g,'aa');
-    if (!dmap[d2]) dmap[d2] = {sum:0,count:0};
-    dmap[d2].sum += x.timer; dmap[d2].count++;
+  // Dag-fordeling
+  const dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
+  const dagShort = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const dmap = {};
+  days.forEach(x => {
+    const clean = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'aa');
+    if (!dmap[clean]) dmap[clean] = {sum:0,count:0};
+    dmap[clean].sum += x.timer; dmap[clean].count++;
   });
-
-  var dag = dagFull.map((n,i) => {
-    var e = dmap[n]; return { dag:dagShort[i], gns: e ? Math.round(e.sum/e.count*100)/100 : 0 };
+  const dag = dagFull.map((n,i) => {
+    const e = dmap[n]; return { dag:dagShort[i], gns: e ? e.sum/e.count : 0 };
   }).filter(d => d.gns > 0);
 
-  return { summary:summary, days:days, monthly:monthly, weekly:weekly, dag:dag };
+  return { summary, days, monthly, weekly, dag };
 }
 
 function isoWeek(d) {
-  var dt = new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
-  dt.setUTCDate(dt.getUTCDate()+4-(dt.getUTCDay()||7));
-  var y = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
-  return Math.ceil((((dt-y)/86400000)+1)/7);
+  const t = new Date(d.valueOf()); t.setDate(t.getDate() + (4 - (t.getDay() || 7)));
+  const s = new Date(t.getFullYear(), 0, 1);
+  return Math.ceil((((t - s) / 86400000) + 1) / 7);
 }
 
-// ---- RENDER ----
+// ---- RENDER (RETTET) ----
 function renderAll(data) {
-  var s=data.summary, days=data.days, monthly=data.monthly, weekly=data.weekly, dag=data.dag;
-  if (days.length>0) {
-    var fmt=function(d){return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});};
-    document.getElementById('dsub').textContent = fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
-  }
-  var kpis=[
-    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:(s.overtid>=0?'+':'')+s.overtid.toFixed(1)+'t overtid',over:s.overtid<0},
-    {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',over:s.gns_uge<NORM_UGE},
-    {label:'Snit pr. maaned',val:s.gns_md.toFixed(1),unit:'timer pr. maaned',badge:monthly.length+' maaneder',cls:'b'},
-    {label:'Snit pr. dag',val:s.gns_dag.toFixed(2),unit:'timer (norm: '+NORM_DAG+'t)',badge:(s.gns_dag>=NORM_DAG?'+':'')+(s.gns_dag-NORM_DAG).toFixed(2)+'t',over:s.gns_dag<NORM_DAG}
+  const s = data.summary;
+  
+  // 5 KPI Kort
+  const kpis = [
+    {label:'Fleks Saldo', val:s.overtid.toFixed(1), unit:'timer totalt', badge: s.overtid >= 0 ? 'OVERSKUD' : 'UNDERSKUD', cls:'flex', over: s.overtid < 0},
+    {label:'Timer i alt', val:s.total.toFixed(0), unit:'timer i år', badge: 'Status', cls:''},
+    {label:'Snit / Uge', val:s.gns_uge.toFixed(1), unit:'timer pr. uge', badge: (s.gns_uge-37).toFixed(1)+'t vs norm', over: s.gns_uge < 37},
+    {label:'Snit / Md', val:s.gns_md.toFixed(0), unit:'timer pr. md', badge: data.monthly.length+' måneder'},
+    {label:'Snit / Dag', val:s.gns_dag.toFixed(1), unit:'timer pr. dag', badge: (s.gns_dag-7.4).toFixed(1)+'t vs norm', over: s.gns_dag < 7.4}
   ];
-  document.getElementById('kpis').innerHTML=kpis.map(function(c,i){
-    return '<div class="card '+(c.cls||'')+'"><div class="clabel">'+c.label+'</div><div class="cval">'+c.val+'</div><div class="cunit">'+c.unit+'</div><div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
+  
+  document.getElementById('kpis').innerHTML = kpis.map(c => `
+    <div class="card ${c.cls}">
+      <div class="clabel">${c.label}</div>
+      <div class="cval">${c.val}</div>
+      <div class="cunit">${c.unit}</div>
+      <div class="cbadge ${c.over?'o':''}">${c.badge}</div>
+    </div>
+  `).join('');
+
+  // Månedsgraf med fikseret rød streg
+  const maxM = Math.max(...data.monthly.map(m => m.timer), 180);
+  document.getElementById('monthbars').innerHTML = data.monthly.map(m => {
+    const p = (m.timer / maxM * 100);
+    const np = (160 / maxM * 100); // Norm-stregen altid på 160
+    return `
+      <div class="brow">
+        <div class="blbl">${m.label}</div>
+        <div class="btrack">
+          <div class="bfill ${m.timer < 160 ? 'u' : ''}" style="width:${p}%"></div>
+          <div class="bnorm" style="left:${np}%"></div>
+        </div>
+        <div class="bval">${m.timer.toFixed(0)}t</div>
+      </div>`;
   }).join('');
 
-  var maxM=Math.max.apply(null,monthly.map(function(m){return m.timer;}).concat([NORM_MD+20]));
-  document.getElementById('monthbars').innerHTML=monthly.map(function(m){
-    var p=(m.timer/maxM*100).toFixed(1), np=(NORM_MD/maxM*100).toFixed(1);
-    return '<div class="brow"><div class="blbl">'+m.label+'</div><div class="btrack"><div class="bfill '+(m.timer<NORM_MD?'u':'')+'" style="width:'+p+'%"><div class="bnorm" style="left:'+np+'%"></div></div></div><div class="bval">'+m.timer.toFixed(1)+'t</div></div>';
-  }).join('')+'<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Normtid ('+NORM_MD+'t/md)</div>';
+  // Ring Graf
+  const pct = Math.min(100, (s.total / s.norm_aar * 100));
+  const circ = 2 * Math.PI * 70;
+  document.getElementById('rcircle').style.strokeDasharray = circ;
+  document.getElementById('rcircle').style.strokeDashoffset = circ - (pct/100 * circ);
+  document.getElementById('rpct').textContent = Math.round(pct) + '%';
 
-  var pct=Math.min(s.total/NORM_AAR,1), R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
-  document.getElementById('ringsvg').innerHTML=
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--surface2)" stroke-width="14"/>'+
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--accent)" stroke-width="14" stroke-dasharray="'+dash+' '+circ+'" stroke-dashoffset="'+(circ/4)+'" stroke-linecap="round"/>'+
-    '<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" fill="var(--text)" font-size="22" font-family="Fraunces,serif" font-weight="600">'+(pct*100).toFixed(0)+'%</text>'+
-    '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" fill="var(--muted)" font-size="10">'+s.total.toFixed(0)+'t / '+NORM_AAR+'t</text>'+
-    '<text x="'+cx+'" y="'+(cy+28)+'" text-anchor="middle" fill="var(--accent)" font-size="10">af normaar</text>';
-  document.getElementById('ringlbls').innerHTML=
-    '<div class="rlbl"><div class="rdot" style="background:var(--accent)"></div>Arbejdet: '+s.total.toFixed(1)+'t</div>'+
-    '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: '+(NORM_AAR-s.total).toFixed(1)+'t</div>';
+  // Dag-fordeling (bund)
+  document.getElementById('daydist').innerHTML = data.dag.map(d => `
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;">
+      <span style="color:var(--muted)">${d.dag}</span>
+      <span>${d.gns.toFixed(1)}t i snit</span>
+    </div>
+  `).join('');
 
-  renderWeekly(weekly);
-
-  var maxD=Math.max.apply(null,dag.map(function(d){return d.gns;}));
-  document.getElementById('daybars').innerHTML=dag.map(function(d){
-    return '<div class="dcol"><div class="dval">'+d.gns+'t</div><div class="dbar '+(d.dag==='Lor'||d.dag==='Son'?'we':'')+'" style="height:'+(d.gns/maxD*80).toFixed(0)+'px"></div><div class="dlbl">'+d.dag+'</div></div>';
-  }).join('');
-
-  var dnames={'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre','lordag':'Lor','sondag':'Son','l\u00f8rdag':'Lor','s\u00f8ndag':'Son'};
-  var recent=days.filter(function(x){return x.timer>0;}).slice(-10).reverse();
-  document.getElementById('recenttbl').innerHTML=
-    '<thead><tr><th>Dato</th><th>Dag</th><th>Timer</th><th>Ift. norm</th></tr></thead><tbody>'+
-    recent.map(function(d){
-      var dt=new Date(d.dato), diff=d.timer-NORM_DAG;
-      var dots=''; for(var i=0;i<13;i++){var f=i<Math.round(d.timer),o=f&&i>=7; dots+='<span class="dot'+(f?' f':'')+(o?' ov':'')+'"></span>';}
-      return '<tr><td style="color:var(--muted)">'+(dt.getDate())+'/'+(dt.getMonth()+1)+'</td><td>'+(dnames[d.dag]||d.dag)+'</td>'+
-        '<td><span class="pill'+(d.timer>9?' h':'')+'">'+d.timer.toFixed(2)+'t</span></td>'+
-        '<td><div style="display:flex;align-items:center;gap:3px">'+dots+
-        '<span style="margin-left:4px;font-size:10px;color:'+(diff>=0?'var(--accent)':'var(--accent2)')+'">'+
-        (diff>=0?'+':'')+diff.toFixed(1)+'t</span></div></td></tr>';
-    }).join('')+'</tbody>';
-
-  renderHeatmap(days);
-}
-
-function renderWeekly(weekly) {
-  var wrap=document.getElementById('wkwrap'), W=wrap.clientWidth||700;
-  var H=160,pL=8,pR=8,pT=18,pB=30,iW=W-pL-pR,iH=H-pT-pB;
-  var vals=weekly.map(function(w){return w.timer;}), maxV=Math.max.apply(null,vals)+3, minV=10;
-  var xS=weekly.length>1?iW/(weekly.length-1):iW;
-  function yS(v){return pT+iH-(v-minV)/(maxV-minV)*iH;}
-  function xP(i){return pL+i*xS;}
-  var normY=yS(NORM_UGE), pts=weekly.map(function(w,i){return xP(i)+','+yS(w.timer);}).join(' ');
-  var ac=xP(weekly.length-1)+','+(pT+iH)+' '+xP(0)+','+(pT+iH);
-  var lp=weekly.map(function(w,i){return (i===0?'M':'L')+xP(i)+','+yS(w.timer);}).join(' ');
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'+
-    '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/><stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/></linearGradient></defs>'+
-    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>'+
-    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.7" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
-    '<polygon points="'+pts+' '+ac+'" fill="url(#ag)"/>'+
-    '<path d="'+lp+'" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>';
-  weekly.forEach(function(w,i){
-    var x=xP(i),y=yS(w.timer),show=(i%2===0||i===weekly.length-1);
-    svg+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+(w.timer>=NORM_UGE?'#7fffb2':'#ff7f6e')+'" stroke="#0f0f13" stroke-width="1.5"><title>'+w.label+': '+w.timer+'t</title></circle>';
-    if(show) svg+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#6b6b80" font-family="DM Mono,monospace">'+w.label+'</text>';
-  });
-  wrap.innerHTML=svg+'</svg>';
+  renderHeatmap(data.days);
 }
 
 function renderHeatmap(days) {
-  if (!days.length) return;
-  var dmap={};
-  days.forEach(function(d){dmap[d.dato]=d.timer;});
-  var minDate=new Date(days[0].d); minDate.setDate(1);
-  var maxDate=new Date(days[days.length-1].d);
-  var maxH=Math.max.apply(null,days.map(function(d){return d.timer;}).concat([1]));
-  var cur=new Date(minDate);
-  while(cur.getDay()!==1) cur.setDate(cur.getDate()-1);
-  var el=document.getElementById('heatmap'); el.innerHTML='';
-  var lblCol=document.createElement('div'); lblCol.className='hmcol';
-  ['M','T','O','T','F','L','S'].forEach(function(l){
-    var d=document.createElement('div');
-    d.style.cssText='width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b6b80';
-    d.textContent=l; lblCol.appendChild(d);
-  });
-  el.appendChild(lblCol);
-  var end=new Date(maxDate); end.setDate(end.getDate()+8);
-  var col=[],cols=[];
-  while(cur<=end){
-    var ds=cur.toISOString().slice(0,10);
-    col.push({ds:ds,h:dmap[ds]||0,inRange:cur>=minDate&&cur<=maxDate});
-    if(col.length===7){cols.push(col);col=[];}
+  const dmap = {};
+  days.forEach(d => dmap[d.dato] = d.timer);
+  const maxDate = new Date();
+  const minDate = new Date(); minDate.setFullYear(maxDate.getFullYear()-1);
+  
+  let cur = new Date(minDate);
+  while(cur.getDay() !== 1) cur.setDate(cur.getDate()-1);
+  
+  const el = document.getElementById('heatmap'); el.innerHTML = '';
+  const end = new Date(maxDate); end.setDate(end.getDate() + 7);
+  
+  let col = [];
+  while(cur <= end) {
+    const ds = cur.toISOString().slice(0,10);
+    col.push({ h: dmap[ds] || 0 });
+    if(col.length === 7) {
+      const colEl = document.createElement('div'); colEl.className = 'hmcol';
+      col.forEach(day => {
+        const cell = document.createElement('div');
+        cell.className = 'hmcell';
+        if(day.h > 0) {
+          const op = Math.min(1, day.h/8);
+          cell.style.background = `rgba(37, 99, 235, ${op})`;
+        }
+        colEl.appendChild(cell);
+      });
+      el.appendChild(colEl);
+      col = [];
+    }
     cur.setDate(cur.getDate()+1);
   }
-  if(col.length){while(col.length<7)col.push({ds:'',h:0,inRange:false});cols.push(col);}
-  cols.forEach(function(col){
-    var colEl=document.createElement('div'); colEl.className='hmcol';
-    col.forEach(function(item){
-      var cell=document.createElement('div'); cell.className='hmcell';
-      if(item.inRange&&item.h>0){
-        cell.style.background='color-mix(in srgb, #7fffb2 '+Math.round((item.h/maxH)*90+10)+'%, #22222c)';
-        var dt=new Date(item.ds); cell.title=(dt.getDate())+'/'+(dt.getMonth()+1)+': '+item.h.toFixed(1)+'t';
-      } else if(!item.inRange||!item.ds){ cell.style.opacity='0'; }
-      colEl.appendChild(cell);
-    });
-    el.appendChild(colEl);
-  });
 }
 </script>
 </body>
