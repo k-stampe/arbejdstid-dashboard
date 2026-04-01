@@ -304,7 +304,6 @@ function getToken() {
   var silent=acct?msalApp.acquireTokenSilent({scopes:scopes,account:acct}):Promise.reject(new Error('no account'));
   return silent.catch(function(){return msalApp.acquireTokenPopup({scopes:scopes});}).then(function(r){return r.accessToken;});
 }
-
 // ── LOAD: fetch all sheets in one go ─────────────────────────────────────────
 function loadData() {
   showLoading('HENTER DATA FRA ONEDRIVE...');
@@ -321,8 +320,7 @@ function loadData() {
         return r.json();
       }).then(function(data) {
         var names=data.value.map(function(s){return s.name;});
-        showLoading('LAESЕР '+names.length+' ARK...');
-        // Fetch all sheets in parallel
+        showLoading('LÆSER '+names.length+' ARK...');
         return Promise.all(names.map(function(name){
           return fetch(base+'/worksheets(\''+encodeURIComponent(name)+'\')/usedRange',{headers:{Authorization:'Bearer '+token}})
             .then(function(r){return r.ok?r.json():null;})
@@ -332,8 +330,10 @@ function loadData() {
         showLoading('BEHANDLER DATA...');
         var sheetMap={};
         sheets.forEach(function(s){sheetMap[s.name]=s.values;});
-        var parsed=parseAllSheets(sheetMap);
+        
+        var parsed = parseAllSheets(sheetMap);
         renderAll(parsed);
+        
         document.getElementById('lastupdated').textContent='Sidst opdateret: '+new Date().toLocaleString('da-DK')+' - Kilde: OneDrive';
         showDash();
       });
@@ -344,15 +344,13 @@ function loadData() {
   });
 }
 
-// ── PARSE ─────────────────────────────────────────────────────────────────────
+// ── DATA BEHANDLING ──────────────────────────────────────────────────────────
 function parseAllSheets(sheetMap) {
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
-  
   var totalSheet = sheetMap['Arbejdstid total'] || [];
   var summary = {
     total: 0, gns_md: 0, gns_uge: 0, gns_dag: 0,
-    // Vi kalder den 'fleks' så renderAll kan finde den
-    fleks: n(totalSheet[5] && totalSheet[5][3]) 
+    fleks: n(totalSheet[5] && totalSheet[5][3]) // Henter fra D6
   };
   
   if (totalSheet.length > 0) {
@@ -365,30 +363,19 @@ function parseAllSheets(sheetMap) {
   var allDays = [];
   var dagMap = { 'mandag':0, 'tirsdag':1, 'onsdag':2, 'torsdag':3, 'fredag':4, 'lørdag':5, 'søndag':6 };
   var dagNavne = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
-  var dstats = [0,0,0,0,0,0,0].map(() => ({sum:0, count:0}));
+  var dstats = [0,0,0,0,0,0,0].map(function(){ return {sum:0, count:0}; });
 
-  // 2. Gennemgå alle ark (månederne)
   Object.keys(sheetMap).forEach(function(name) {
     if (name === 'Arbejdstid total') return;
     var rows = sheetMap[name];
-    
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      // Vi kigger i kolonne C (dato), D (ugedag) og F (timer)
       if (!r || r.length < 6) continue;
-      
-      var rawDato = r[2]; // Kolonne C
-      var ugedag = String(r[3] || '').toLowerCase().trim(); // Kolonne D
-      var timer = n(r[5]); // Kolonne F
-
+      var rawDato = r[2], ugedag = normDag(r[3]), timer = n(r[5]);
       if (!rawDato || rawDato === 'Dato(er)') continue;
-
       var d = typeof rawDato === 'number' ? new Date((rawDato - 25569) * 86400000) : new Date(rawDato);
       if (isNaN(d.getTime())) continue;
-
       allDays.push({ dato: d.toISOString().slice(0,10), timer: timer, d: d });
-
-      // Statistik til ugedags-graferne (løser problemet med tomme barer)
       if (timer > 0 && dagMap[ugedag] !== undefined) {
         dstats[dagMap[ugedag]].sum += timer;
         dstats[dagMap[ugedag]].count++;
@@ -397,8 +384,6 @@ function parseAllSheets(sheetMap) {
   });
 
   allDays.sort(function(a,b){ return a.d - b.d; });
-
-  // 3. Gruppér måneder
   var mmap = {};
   allDays.forEach(function(x) {
     if (x.timer <= 0) return;
@@ -407,188 +392,109 @@ function parseAllSheets(sheetMap) {
   });
   
   var monthly = Object.keys(mmap).sort().map(function(k) {
-    return {
-      label: new Date(k + '-01').toLocaleDateString('da-DK', {month:'short', year:'numeric'}),
-      timer: mmap[k]
-    };
+    var t = mmap[k];
+    return { label: new Date(k + '-01').toLocaleDateString('da-DK', {month:'short', year:'numeric'}), timer: t, overtid: t - 160 };
   });
 
-  var dagGns = dstats.map((s, i) => ({
-    dag: dagNavne[i],
-    gns: s.count > 0 ? s.sum / s.count : 0
-  })).filter(d => d.gns > 0);
+  var dagGns = dstats.map(function(s, i) {
+    return { dag: dagNavne[i], gns: s.count > 0 ? s.sum / s.count : 0 };
+  }).filter(function(d){ return d.gns > 0; });
 
   return { summary: summary, days: allDays, monthly: monthly, dag: dagGns };
 }
 
-// ── RENDER ────────────────────────────────────────────────────────────────────
+// ── VISNING ──────────────────────────────────────────────────────────────────
 function renderAll(data) {
   var s = data.summary;
-  
-  // 1. KPI Kort (Flekssaldo fra s.fleks)
+  var monthly = data.monthly;
+
   var kpis = [
     {label:'Flekssaldo', val: (s.fleks || 0).toFixed(1)+'t', unit:'samlet saldo', badge: (s.fleks || 0) >= 0 ? 'Overskud' : 'Underskud', over: (s.fleks || 0) < 0},
     {label:'Gns pr. uge', val: s.gns_uge.toFixed(1), unit:'t (norm: 37t)', badge:(s.gns_uge-37).toFixed(1)+'t', over: s.gns_uge < 37},
     {label:'Gns pr. dag', val: s.gns_dag.toFixed(2), unit:'t (norm: 7.4t)', badge:(s.gns_dag-7.4).toFixed(2)+'t', over: s.gns_dag < 7.4}
   ];
 
-  document.getElementById('kpis').innerHTML = kpis.map(c => `
-    <div class="card">
-      <div class="clabel">${c.label}</div>
-      <div class="cval">${c.val}</div>
-      <div class="cunit">${c.unit}</div>
-      <div class="cbadge ${c.over ? 'o' : ''}">${c.badge}</div>
-    </div>
-  `).join('');
+  document.getElementById('kpis').innerHTML = kpis.map(function(c) {
+    return '<div class="card"><div class="clabel">'+c.label+'</div><div class="cval">'+c.val+'</div><div class="cunit">'+c.unit+'</div><div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
+  }).join('');
 
-  // 2. Måneds-barer (Retter de "tilfældige" røde streger)
-  var maxM = Math.max.apply(null, data.monthly.map(m => m.timer).concat([180])); 
-  document.getElementById('monthbars').innerHTML = data.monthly.map(m => {
+  document.getElementById('monthbars').innerHTML = monthly.map(function(m) {
+    var maxM = 200;
     var p = (m.timer / maxM * 100).toFixed(1);
-    var np = (160 / maxM * 100).toFixed(1); // Den røde streg er nu altid præcis 160t
-    return `
-      <div class="brow">
-        <div class="blbl">${m.label}</div>
-        <div class="btrack">
-          <div class="bfill ${m.timer < 160 ? 'u' : ''}" style="width:${p}%">
-            <div class="bnorm" style="left:${np}%"></div>
-          </div>
-        </div>
-        <div class="bval">${m.timer.toFixed(1)}t</div>
-      </div>`;
+    var np = (160 / maxM * 100).toFixed(1); 
+    return '<div class="brow"><div class="blbl">'+m.label+'</div><div class="btrack"><div class="bfill '+(m.timer<160?'u':'')+'" style="width:'+p+'%"><div class="bnorm" style="left:'+np+'%"></div></div></div><div class="bval">'+m.timer.toFixed(1)+'t</div></div>';
   }).join('');
 
-  // ... behold resten af renderAll (ugedage, heatmap osv.) ...
-}
-
-  // Flex breakdown
-  var maxF=Math.max.apply(null,workMonths.map(function(m){return Math.abs(m.overtid);}).concat([1]));
-  document.getElementById('fleksbreakdown').innerHTML=workMonths.map(function(m){
-    var pos=m.overtid>=0;
-    var pct=(Math.abs(m.overtid)/maxF*100).toFixed(1);
-    return '<div class="fbrow">'+
-      '<div class="fblbl">'+m.label+'</div>'+
-      '<div class="fbtrack"><div class="'+(pos?'fbpos':'fbneg')+'" style="width:'+pct+'%"></div></div>'+
-      '<div class="fbval" style="color:'+(pos?'var(--accent)':'var(--accent2)')+'">'+
-        (pos?'+':'')+m.overtid.toFixed(1)+'t</div></div>';
-  }).join('')+
-  '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">'+
-    '<span style="font-size:10px;color:var(--muted)">Total flekssaldo</span>'+
-    '<span style="font-size:1.4rem;font-family:Fraunces,serif;font-weight:600;color:'+(s.fleks>=0?'var(--accent)':'var(--accent2)')+'">'+
-      (s.fleks>=0?'+':'')+s.fleks.toFixed(1)+'t</span></div>';
-
-  // Weekly
-  renderWeekly(weekly);
-
-  // Ring
-  var pct=Math.min(s.total/NORM_AAR,1),R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
-  document.getElementById('ringsvg').innerHTML=
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--surface2)" stroke-width="14"/>'+
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--accent)" stroke-width="14" stroke-dasharray="'+dash+' '+circ+'" stroke-dashoffset="'+(circ/4)+'" stroke-linecap="round"/>'+
-    '<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" fill="var(--text)" font-size="22" font-family="Fraunces,serif" font-weight="600">'+(pct*100).toFixed(0)+'%</text>'+
-    '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" fill="var(--muted)" font-size="10">'+s.total.toFixed(0)+'t / '+NORM_AAR+'t</text>'+
-    '<text x="'+cx+'" y="'+(cy+28)+'" text-anchor="middle" fill="var(--accent)" font-size="10">af normaar</text>';
-  document.getElementById('ringlbls').innerHTML=
-    '<div class="rlbl"><div class="rdot" style="background:var(--accent)"></div>Arbejdet: '+s.total.toFixed(1)+'t</div>'+
-    '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: '+(NORM_AAR-s.total).toFixed(1)+'t</div>';
-
-// --- Ugedags-barer ---
-  var maxD = Math.max.apply(null, data.dag.map(d => d.gns).concat([8]));
-  document.getElementById('daybars').innerHTML = data.dag.map(d => {
-    var p = (d.gns / maxD * 100).toFixed(1);
-    var np = (7.4 / maxD * 100).toFixed(1); // LÅST TIL 7.4 (Norm pr dag)
-    return `
-      <div class="brow">
-        <div class="blbl">${d.dag}</div>
-        <div class="btrack"><div class="bfill" style="width:${p}%"><div class="bnorm" style="left:${np}%"></div></div></div>
-        <div class="bval">${d.gns.toFixed(1)}t</div>
-      </div>`;
+  document.getElementById('fleksbreakdown').innerHTML = monthly.map(function(m) {
+    var pos = m.overtid >= 0;
+    var pct = Math.min(Math.abs(m.overtid) * 2, 100);
+    return '<div class="fbrow"><div class="fblbl">'+m.label+'</div><div class="fbtrack"><div class="'+(pos?'fbpos':'fbneg')+'" style="width:'+pct+'%"></div></div><div class="fbval" style="color:'+(pos?'var(--accent)':'var(--accent2)')+'">'+(pos?'+':'')+m.overtid.toFixed(1)+'t</div></div>';
   }).join('');
 
-  // Recent table
-  var dnames={'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre'};
-  var recent=days.filter(function(x){return x.timer>0;}).slice(-10).reverse();
-  document.getElementById('recenttbl').innerHTML=
-    '<thead><tr><th>Dato</th><th>Dag</th><th>Timer</th><th>Ift. norm</th></tr></thead><tbody>'+
-    recent.map(function(d){
-      var dt=new Date(d.dato),diff=d.timer-NORM_DAG;
-      var dots=''; for(var i=0;i<13;i++){var f=i<Math.round(d.timer),o=f&&i>=7; dots+='<span class="dot'+(f?' f':'')+(o?' ov':'')+'"></span>';}
-      return '<tr><td style="color:var(--muted)">'+(dt.getDate())+'/'+(dt.getMonth()+1)+'</td>'+
-        '<td>'+(dnames[d.dag]||d.dag)+'</td>'+
-        '<td><span class="pill'+(d.timer>9?' h':'')+'">'+d.timer.toFixed(2)+'t</span></td>'+
-        '<td><div style="display:flex;align-items:center;gap:3px">'+dots+
-        '<span style="margin-left:4px;font-size:10px;color:'+(diff>=0?'var(--accent)':'var(--accent2)')+'">'+
-        (diff>=0?'+':'')+diff.toFixed(1)+'t</span></div></td></tr>';
-    }).join('')+'</tbody>';
+  document.getElementById('daybars').innerHTML = data.dag.map(function(d) {
+    var p = (d.gns / 10 * 100).toFixed(1);
+    var np = (7.4 / 10 * 100).toFixed(1);
+    return '<div class="brow"><div class="blbl">'+d.dag+'</div><div class="btrack"><div class="bfill" style="width:'+p+'%"><div class="bnorm" style="left:'+np+'%"></div></div></div><div class="bval">'+d.gns.toFixed(1)+'t</div></div>';
+  }).join('');
 
-  renderHeatmap(days);
+  renderHeatmap(data.days);
+  renderWeekly(getWeekly(data.days));
 }
 
-function renderWeekly(weekly){
-  var wrap=document.getElementById('wkwrap'),W=wrap.clientWidth||600;
-  var H=160,pL=8,pR=8,pT=18,pB=30,iW=W-pL-pR,iH=H-pT-pB;
-  var vals=weekly.map(function(w){return w.timer;});
-  if(!vals.length){wrap.innerHTML='<p style="color:var(--muted);font-size:11px">Ingen data</p>';return;}
-  var maxV=Math.max.apply(null,vals)+3, minV=Math.max(0,Math.min.apply(null,vals)-3);
-  var xS=weekly.length>1?iW/(weekly.length-1):iW;
-  function yS(v){return pT+iH-(v-minV)/(maxV-minV)*iH;}
-  function xP(i){return pL+i*xS;}
-  var normY=yS(NORM_UGE);
-  var pts=weekly.map(function(w,i){return xP(i)+','+yS(w.timer);}).join(' ');
-  var ac=xP(weekly.length-1)+','+(pT+iH)+' '+xP(0)+','+(pT+iH);
-  var lp=weekly.map(function(w,i){return(i===0?'M':'L')+xP(i)+','+yS(w.timer);}).join(' ');
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'+
-    '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/><stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/></linearGradient></defs>'+
-    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.7"/>'+
-    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.9" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
-    '<polygon points="'+pts+' '+ac+'" fill="url(#ag)"/>'+
-    '<path d="'+lp+'" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>';
-  weekly.forEach(function(w,i){
-    var x=xP(i),y=yS(w.timer),show=(i%2===0||i===weekly.length-1);
-    svg+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+(w.timer>=NORM_UGE?'#7fffb2':'#ff7f6e')+'" stroke="#0f0f13" stroke-width="1.5"><title>'+w.label+': '+w.timer+'t</title></circle>';
-    if(show)svg+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#6b6b80" font-family="DM Mono,monospace">'+w.label+'</text>';
+function getWeekly(days) {
+  var weeks = {};
+  days.forEach(function(d) {
+    var date = new Date(d.d);
+    date.setHours(0,0,0,0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    var yearStart = new Date(date.getFullYear(),0,1);
+    var weekNo = Math.ceil(( ( (date - yearStart) / 86400000) + 1) / 7);
+    var k = date.getFullYear() + '-W' + weekNo;
+    if(!weeks[k]) weeks[k] = 0;
+    weeks[k] += d.timer;
   });
-  wrap.innerHTML=svg+'</svg>';
+  return Object.keys(weeks).sort().reverse().slice(0,12).map(function(k){ return {label:k, timer:weeks[k]}; });
 }
 
-function renderHeatmap(days){
+function renderWeekly(weekly) {
+  document.getElementById('wkwrap').innerHTML = weekly.map(function(w) {
+    var p = (w.timer / 60 * 100).toFixed(1);
+    var np = (37 / 60 * 100).toFixed(1);
+    return '<div class="brow"><div class="blbl">'+w.label+'</div><div class="btrack"><div class="bfill '+(w.timer<37?'u':'')+'" style="width:'+p+'%"><div class="bnorm" style="left:'+np+'%"></div></div></div><div class="bval">'+w.timer.toFixed(1)+'t</div></div>';
+  }).join('');
+}
+function renderHeatmap(days) {
   if(!days.length) return;
-  var dmap={};
-  days.forEach(function(d){if(d.timer>0)dmap[d.dato]=d.timer;});
-  var minDate=new Date(days[0].d); minDate.setDate(1);
-  var maxDate=new Date(days[days.length-1].d);
-  var maxH=Math.max.apply(null,days.map(function(d){return d.timer;}).concat([1]));
-  var cur=new Date(minDate);
+  var dmap={}; days.forEach(function(d){ dmap[d.dato]=d.timer; });
+  var maxDate=new Date(Math.max.apply(null,days.map(function(d){return new Date(d.d)})));
+  var cur=new Date(maxDate); cur.setDate(cur.getDate()-70); 
   while(cur.getDay()!==1) cur.setDate(cur.getDate()-1);
+  
   var el=document.getElementById('heatmap'); el.innerHTML='';
   var lblCol=document.createElement('div'); lblCol.className='hmcol';
   ['M','T','O','T','F','L','S'].forEach(function(l){
-    var d=document.createElement('div');
-    d.style.cssText='width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b6b80';
+    var d=document.createElement('div'); 
+    d.style.cssText='width:14px;height:14px;font-size:9px;color:var(--muted);display:flex;align-items:center;'; 
     d.textContent=l; lblCol.appendChild(d);
   });
   el.appendChild(lblCol);
-  var end=new Date(maxDate); end.setDate(end.getDate()+8);
-  var col=[],cols=[];
+  
+  var end=new Date(maxDate); end.setDate(end.getDate()+7);
+  var col=[];
   while(cur<=end){
     var ds=cur.toISOString().slice(0,10);
-    col.push({ds:ds,h:dmap[ds]||0,inRange:cur>=minDate&&cur<=maxDate});
-    if(col.length===7){cols.push(col);col=[];}
+    col.push({ds:ds, h:dmap[ds]||0});
+    if(col.length===7){
+      var colEl=document.createElement('div'); colEl.className='hmcol';
+      col.forEach(function(item){
+        var cell=document.createElement('div'); cell.className='hmcell';
+        if(item.h>0) cell.style.background = item.h>=7.4 ? 'var(--accent)' : 'rgba(127,255,178,0.3)';
+        cell.title=item.ds+': '+item.h+'t'; colEl.appendChild(cell);
+      });
+      el.appendChild(colEl); col=[];
+    }
     cur.setDate(cur.getDate()+1);
   }
-  if(col.length){while(col.length<7)col.push({ds:'',h:0,inRange:false});cols.push(col);}
-  cols.forEach(function(col){
-    var colEl=document.createElement('div'); colEl.className='hmcol';
-    col.forEach(function(item){
-      var cell=document.createElement('div'); cell.className='hmcell';
-      if(item.inRange&&item.h>0){
-        cell.style.background='color-mix(in srgb, #7fffb2 '+Math.round((item.h/maxH)*90+10)+'%, #22222c)';
-        var dt=new Date(item.ds); cell.title=(dt.getDate())+'/'+(dt.getMonth()+1)+': '+item.h.toFixed(1)+'t';
-      } else if(!item.inRange||!item.ds){cell.style.opacity='0';}
-      colEl.appendChild(cell);
-    });
-    el.appendChild(colEl);
-  });
 }
 </script>
 </body>
