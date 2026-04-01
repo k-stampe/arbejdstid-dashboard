@@ -198,7 +198,7 @@ input[type=text]::placeholder { color: var(--muted); }
 </div>
 
 <script>
-// Load MSAL dynamically (Din originale indlaesning)
+// Load MSAL dynamically
 (function() {
   var s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js';
@@ -248,17 +248,22 @@ function waitMsal(cb) {
   var iv = setInterval(function() {
     var lib = window.msalBrowser || window.msal;
     if (lib) { clearInterval(iv); cb(null, lib); return; }
-    if (++tries > 80) { clearInterval(iv); cb(new Error('MSAL kunne ikke indlæses. Tjek netværk.')); }
+    if (++tries > 80) { clearInterval(iv); cb(new Error('MSAL kunne ikke indlaeses. Tjek din netvaerksforbindelse og genindlaes siden.')); }
   }, 100);
 }
 
 function buildMsal(lib, clientId) {
   return new lib.PublicClientApplication({
-    auth: { clientId: clientId, authority: 'https://login.microsoftonline.com/consumers', redirectUri: REDIRECT },
+    auth: {
+      clientId: clientId,
+      authority: 'https://login.microsoftonline.com/consumers',
+      redirectUri: REDIRECT
+    },
     cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
   });
 }
 
+// On page load
 window.addEventListener('load', function() {
   var saved = localStorage.getItem(CFG_KEY);
   if (!saved) return;
@@ -270,12 +275,16 @@ window.addEventListener('load', function() {
     if (err) { showSetup(); showErr(err.message); return; }
     try {
       msalApp = buildMsal(lib, cfg.clientId);
-      var p = (typeof msalApp.initialize === 'function') ? msalApp.initialize() : Promise.resolve();
+      var p = typeof msalApp.initialize === 'function' ? msalApp.initialize() : Promise.resolve();
       p.then(function() {
         var accts = msalApp.getAllAccounts();
-        if (accts && accts.length > 0) { loadData(); } else { showSetup(); }
-      }).catch(function(e) { showSetup(); showErr('Login fejl: ' + e.message); });
-    } catch(e) { showSetup(); showErr('System fejl: ' + e.message); }
+        if (accts && accts.length > 0) {
+          loadData();
+        } else {
+          showSetup();
+        }
+      }).catch(function(e) { showSetup(); showErr('Opstartsfejl: ' + e.message); });
+    } catch(e) { showSetup(); showErr('Fejl: ' + e.message); }
   });
 });
 
@@ -283,57 +292,107 @@ function doLogin() {
   hideErr();
   var clientId = document.getElementById('inp-cid').value.trim();
   var filePath = document.getElementById('inp-path').value.trim();
-  if (!clientId || !filePath) { showErr('Udfyld venligst begge felter.'); return; }
+  if (!clientId) { showErr('Indtast dit Azure Client ID.'); return; }
+  if (!filePath) { showErr('Indtast stien til din Excel-fil, fx /Arbejdstidsskema.xlsx'); return; }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) {
+    showErr('Client ID ser forkert ud.\nDet skal vaere et UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'); return;
+  }
 
   cfg = { clientId: clientId, filePath: filePath };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
 
   var btn = document.getElementById('loginBtn');
   btn.disabled = true;
-  btn.textContent = 'FORBINDER...';
+  btn.textContent = 'VENTER PA MSAL...';
 
   waitMsal(function(err, lib) {
-    if (err) { showErr(err.message); btn.disabled = false; return; }
-    msalApp = buildMsal(lib, clientId);
-    var initP = (typeof msalApp.initialize === 'function') ? msalApp.initialize() : Promise.resolve();
-    initP.then(function() {
-      return msalApp.loginPopup({ scopes: ['Files.Read', 'Files.Read.All'], prompt: 'select_account' });
-    }).then(function(result) {
-      if (result) { loadData(); }
-    }).catch(function(e) {
-      showErr('Login fejlede: ' + e.message);
+    if (err) { showErr(err.message); btn.disabled = false; btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192'; return; }
+    try {
+      msalApp = buildMsal(lib, clientId);
+      var initP = typeof msalApp.initialize === 'function' ? msalApp.initialize() : Promise.resolve();
+      initP.then(function() {
+        btn.textContent = 'ABNER MICROSOFT LOGIN...';
+        // Allow popups - user must allow popup for this domain
+        return msalApp.loginPopup({
+          scopes: ['Files.Read', 'Files.Read.All'],
+          prompt: 'select_account'
+        });
+      }).then(function(result) {
+        if (result && result.account) {
+          loadData();
+        } else {
+          showErr('Login returnerede ingen konto. Proev igen.');
+          btn.disabled = false;
+          btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
+        }
+      }).catch(function(e) {
+        var msg = e.message || String(e);
+        if (/popup|block/i.test(msg)) {
+          showErr('Popup blev blokeret af din browser.\n\nSaadan tillader du popups i Chrome:\n1. Klik pa adresselinjens ikon (blokeret popup)\n2. Vaelg "Tillad altid popups fra dette sted"\n3. Proev igen.');
+        } else if (/cancel|user_cancel/i.test(msg)) {
+          showErr('Login blev annulleret. Proev igen.');
+        } else {
+          showErr('Login fejlede:\n' + msg);
+        }
+        btn.disabled = false;
+        btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
+      });
+    } catch(e) {
+      showErr('Uventet fejl: ' + e.message);
       btn.disabled = false;
-      btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND →';
-    });
+      btn.textContent = 'LOG IND MED MICROSOFT OG FORBIND \u2192';
+    }
   });
 }
 
 function getToken() {
+  var scopes = ['Files.Read', 'Files.Read.All'];
   var accts = msalApp.getAllAccounts();
-  return msalApp.acquireTokenSilent({ scopes: ['Files.Read'], account: accts[0] })
-    .catch(function() { return msalApp.acquireTokenPopup({ scopes: ['Files.Read'] }); })
-    .then(function(r) { return r.accessToken; });
+  var silent = accts && accts.length > 0
+    ? msalApp.acquireTokenSilent({ scopes: scopes, account: accts[0] })
+    : Promise.reject(new Error('no account'));
+  return silent.catch(function() {
+    return msalApp.acquireTokenPopup({ scopes: scopes });
+  }).then(function(r) { return r.accessToken; });
 }
 
 function loadData() {
-  showLoading('HENTER DATA...');
+  showLoading('HENTER DATA FRA ONEDRIVE...');
   getToken().then(function(token) {
     var fp = cfg.filePath.startsWith('/') ? cfg.filePath : '/' + cfg.filePath;
     var base = 'https://graph.microsoft.com/v1.0/me/drive/root:' + encodeURIComponent(fp) + ':/workbook';
+    showLoading('LAESЕР EXCEL-ARK...');
     return fetch(base + '/worksheets', { headers: { Authorization: 'Bearer ' + token } })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var sheet = data.value.find(function(s) { return /total|arbejdstid/i.test(s.name); });
-        return fetch(base + '/worksheets(\'' + encodeURIComponent(sheet.name) + '\')/usedRange', {
+      .then(function(r) {
+        if (!r.ok) return r.text().then(function(body) {
+          var parsed; try { parsed = JSON.parse(body); } catch(e) {}
+          var detail = parsed && parsed.error ? parsed.error.message : body.slice(0,200);
+          throw new Error('Fil ikke fundet (' + r.status + '): ' + detail + '\n\nTjek at fil-stien er korrekt: ' + fp);
+        });
+        return r.json();
+      }).then(function(data) {
+        var names = data.value.map(function(s) { return s.name; });
+        var sheet = names.find(function(n) { return /total|arbejdstid/i.test(n); });
+        if (!sheet) throw new Error('Fandt ikke totalarket.\nArk i filen: ' + names.join(', '));
+        showLoading('BEHANDLER DATA...');
+        return fetch(base + '/worksheets(\'' + encodeURIComponent(sheet) + '\')/usedRange', {
           headers: { Authorization: 'Bearer ' + token }
         });
-      }).then(function(r) { return r.json(); })
-      .then(function(data) {
-        renderAll(parseData(data.values));
-        document.getElementById('lastupdated').textContent = 'Opdateret: ' + new Date().toLocaleString();
+      }).then(function(r) {
+        if (!r.ok) throw new Error('Fejl ved laesning: ' + r.status + ' ' + r.statusText);
+        return r.json();
+      }).then(function(data) {
+        var parsed = parseData(data.values);
+        renderAll(parsed);
+        document.getElementById('lastupdated').textContent =
+          'Sidst opdateret: ' + new Date().toLocaleString('da-DK') + ' - Kilde: OneDrive';
         showDash();
       });
-  }).catch(function(err) { showSetup(); showErr('Data fejl: ' + err.message); });
+  }).catch(function(err) {
+    showSetup();
+    showErr('Fejl:\n' + (err.message || String(err)));
+    console.error(err);
+  });
 }
 
 // ---- PARSE (Opdateret med rettelser) ----
