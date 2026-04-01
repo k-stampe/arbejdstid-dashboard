@@ -51,6 +51,7 @@ input[type=text]::placeholder { color: var(--muted); }
 .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: .4; }
 .card.b::before { background: var(--accent3); }
 .card.fleks::before { background: var(--accent); opacity: 1; }
+.card.fleks-neg::before { background: var(--accent2); opacity: 1; }
 .clabel { color: var(--muted); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
 .cval { font-family: 'Fraunces', serif; font-size: 2.2rem; font-weight: 600; line-height: 1; }
 .cunit { font-size: 11px; color: var(--muted); margin-top: 4px; }
@@ -62,23 +63,21 @@ input[type=text]::placeholder { color: var(--muted); }
 .cc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
 .ct { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
 
-/* Flex breakdown bar */
-.fleks-breakdown { margin-top: 16px; }
-.fbrow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.fblbl { width: 64px; text-align: right; color: var(--muted); font-size: 10px; flex-shrink: 0; }
-.fbtrack { flex: 1; height: 18px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
-.fbfill-pos { height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, var(--surface2)), var(--accent)); transition: width .8s cubic-bezier(.4,0,.2,1); }
-.fbfill-neg { height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent2) 50%, var(--surface2)), var(--accent2)); transition: width .8s cubic-bezier(.4,0,.2,1); }
-.fbval { width: 48px; font-size: 11px; flex-shrink: 0; text-align: right; }
-
-.barwrap { display: flex; flex-direction: column; gap: 6px; }
+.barwrap { display: flex; flex-direction: column; gap: 8px; }
 .brow { display: flex; align-items: center; gap: 10px; }
 .blbl { width: 60px; text-align: right; color: var(--muted); font-size: 10px; flex-shrink: 0; }
-.btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
-.bfill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent3), var(--accent)); position: relative; transition: width .8s cubic-bezier(.4,0,.2,1); }
+.btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; position: relative; overflow: hidden; }
+.bfill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent3), var(--accent)); transition: width .8s cubic-bezier(.4,0,.2,1); }
 .bfill.u { background: linear-gradient(90deg, #4a6fa5, var(--accent3)); }
-.bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); opacity: .8; z-index: 2; }
-.bval { width: 42px; font-size: 11px; flex-shrink: 0; }
+.bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); opacity: .9; z-index: 2; pointer-events: none; }
+.bval { width: 44px; font-size: 11px; flex-shrink: 0; text-align: right; }
+
+.fbrow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.fblbl { width: 60px; text-align: right; color: var(--muted); font-size: 10px; flex-shrink: 0; }
+.fbtrack { flex: 1; height: 18px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.fbpos { height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb,var(--accent) 40%,var(--surface2)), var(--accent)); transition: width .8s; }
+.fbneg { height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb,var(--accent2) 40%,var(--surface2)), var(--accent2)); transition: width .8s; }
+.fbval { width: 44px; font-size: 11px; flex-shrink: 0; text-align: right; }
 
 .ringwrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .ringlbls { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
@@ -87,16 +86,16 @@ input[type=text]::placeholder { color: var(--muted); }
 
 .daybars { display: flex; gap: 8px; align-items: flex-end; height: 100px; }
 .dcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.dbar { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 50%, transparent)); min-height: 4px; }
+.dbar { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), color-mix(in srgb,var(--accent) 50%,transparent)); min-height: 4px; }
 .dlbl { font-size: 10px; color: var(--muted); }
-.dval { font-size: 10px; color: var(--text); }
+.dval { font-size: 10px; }
 
 .dtbl { width: 100%; border-collapse: collapse; }
 .dtbl th { text-align: left; color: var(--muted); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding: 0 0 10px; border-bottom: 1px solid var(--border); }
-.dtbl td { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); font-size: 12px; }
+.dtbl td { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb,var(--border) 60%,transparent); font-size: 12px; }
 .dtbl tr:last-child td { border-bottom: none; }
-.pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-.pill.h { background: color-mix(in srgb, var(--accent2) 12%, transparent); color: var(--accent2); }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; background: color-mix(in srgb,var(--accent) 12%,transparent); color: var(--accent); }
+.pill.h { background: color-mix(in srgb,var(--accent2) 12%,transparent); color: var(--accent2); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .2; display: inline-block; }
 .dot.f { opacity: 1; }
 .dot.ov { background: var(--accent2); }
@@ -161,46 +160,24 @@ input[type=text]::placeholder { color: var(--muted); }
       <button class="smBtn" onclick="doReset()">&#9881; Indstillinger</button>
     </div>
   </div>
-
-  <!-- 5 KPI cards including flex -->
   <div class="grid5" id="kpis"></div>
-
   <div class="row2">
-    <div class="cc">
-      <div class="ct">Timer pr. maaned (normtid markeret)</div>
-      <div class="barwrap" id="monthbars"></div>
-    </div>
-    <div class="cc">
-      <div class="ct">Flekssaldo pr. maaned</div>
-      <div class="fleks-breakdown" id="fleksbreakdown"></div>
-    </div>
+    <div class="cc"><div class="ct">Timer pr. maaned &mdash; normtid markeret</div><div class="barwrap" id="monthbars"></div></div>
+    <div class="cc"><div class="ct">Flekssaldo pr. maaned</div><div id="fleksbreakdown"></div></div>
   </div>
-
   <div class="row2" style="margin-bottom:24px">
-    <div class="cc">
-      <div class="ct">Timer pr. uge</div>
-      <div id="wkwrap"></div>
-    </div>
-    <div class="cc">
-      <div class="ct">Aarsopgoerelse</div>
+    <div class="cc"><div class="ct">Timer pr. uge</div><div id="wkwrap"></div></div>
+    <div class="cc"><div class="ct">Aarsopgoerelse</div>
       <div class="ringwrap">
         <svg id="ringsvg" viewBox="0 0 180 180" width="180" height="180"></svg>
         <div class="ringlbls" id="ringlbls"></div>
       </div>
     </div>
   </div>
-
   <div class="row3">
-    <div class="cc">
-      <div class="ct">Gennemsnit pr. ugedag (kun hverdage)</div>
-      <div class="daybars" id="daybars"></div>
-    </div>
-    <div class="cc">
-      <div class="ct">Seneste arbejdsdage</div>
-      <table class="dtbl" id="recenttbl"></table>
-    </div>
+    <div class="cc"><div class="ct">Gennemsnit pr. ugedag (kun hverdage)</div><div class="daybars" id="daybars"></div></div>
+    <div class="cc"><div class="ct">Seneste arbejdsdage</div><table class="dtbl" id="recenttbl"></table></div>
   </div>
-
   <div class="cc">
     <div class="ct">Aktivitetskort</div>
     <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
@@ -233,10 +210,10 @@ input[type=text]::placeholder { color: var(--muted); }
 </script>
 
 <script>
-var CFG_KEY = 'atid_cfg4';
+var CFG_KEY = 'atid_cfg5';
 var REDIRECT = 'https://k-stampe.github.io/arbejdstid-dashboard/';
 var NORM_UGE = 37, NORM_DAG = 7.4, NORM_MD = 160, NORM_AAR = 1920;
-var WEEKENDS = ['lørdag','søndag','lordag','sondag','saturday','sunday'];
+var WEEKENDS = ['lordag','sondag','saturday','sunday'];
 var msalApp = null, cfg = null;
 
 function showErr(msg) { var e=document.getElementById('errmsg'); e.style.display='block'; e.textContent=msg; }
@@ -245,6 +222,12 @@ function showSetup() { document.getElementById('setup').style.display='flex'; do
 function showLoading(msg) { document.getElementById('setup').style.display='none'; document.getElementById('loading').style.display='flex'; document.getElementById('dash').style.display='none'; if(msg) document.getElementById('loadmsg').textContent=msg; }
 function showDash() { document.getElementById('setup').style.display='none'; document.getElementById('loading').style.display='none'; document.getElementById('dash').style.display='block'; }
 function doReset() { localStorage.removeItem(CFG_KEY); location.reload(); }
+
+// Normalize danish chars for comparison
+function normDag(s) {
+  return String(s||'').toLowerCase().trim()
+    .replace(/\u00f8/g,'o').replace(/\u00e6/g,'ae').replace(/\u00e5/g,'aa');
+}
 
 function waitMsal(cb) {
   var tries=0, iv=setInterval(function() {
@@ -285,7 +268,7 @@ function doLogin() {
   var clientId=document.getElementById('inp-cid').value.trim();
   var filePath=document.getElementById('inp-path').value.trim();
   if(!clientId){showErr('Indtast dit Azure Client ID.');return;}
-  if(!filePath){showErr('Indtast stien til din Excel-fil, fx /Arbejdstidsskema.xlsx');return;}
+  if(!filePath){showErr('Indtast stien til din Excel-fil.');return;}
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)){
     showErr('Client ID ser forkert ud.\nSkal vaere: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');return;
   }
@@ -306,7 +289,7 @@ function doLogin() {
         else{showErr('Login returnerede ingen konto. Proev igen.');btn.disabled=false;btn.textContent='LOG IND MED MICROSOFT OG FORBIND \u2192';}
       }).catch(function(e){
         var msg=e.message||String(e);
-        if(/popup|block/i.test(msg)){showErr('Popup blokeret.\nTillad popups fra k-stampe.github.io i din browser og proev igen.');}
+        if(/popup|block/i.test(msg)){showErr('Popup blokeret.\nTillad popups fra k-stampe.github.io og proev igen.');}
         else if(/cancel|user_cancel/i.test(msg)){showErr('Login annulleret.');}
         else{showErr('Login fejlede:\n'+msg);}
         btn.disabled=false;btn.textContent='LOG IND MED MICROSOFT OG FORBIND \u2192';
@@ -322,39 +305,34 @@ function getToken() {
   return silent.catch(function(){return msalApp.acquireTokenPopup({scopes:scopes});}).then(function(r){return r.accessToken;});
 }
 
-// ── LOAD DATA FROM ALL MONTHLY SHEETS ────────────────────────────────────────
+// ── LOAD: fetch all sheets in one go ─────────────────────────────────────────
 function loadData() {
   showLoading('HENTER DATA FRA ONEDRIVE...');
   getToken().then(function(token) {
     var fp=cfg.filePath.startsWith('/')?cfg.filePath:'/'+cfg.filePath;
     var base='https://graph.microsoft.com/v1.0/me/drive/root:'+encodeURIComponent(fp)+':/workbook';
 
-    // First get all sheet names
     return fetch(base+'/worksheets',{headers:{Authorization:'Bearer '+token}})
       .then(function(r){
         if(!r.ok) return r.text().then(function(b){
           var p; try{p=JSON.parse(b);}catch(e){}
-          throw new Error('Fil ikke fundet ('+r.status+'): '+(p&&p.error?p.error.message:b.slice(0,200))+'\n\nFil-sti: '+fp);
+          throw new Error('Fil ikke fundet ('+r.status+'): '+(p&&p.error?p.error.message:b.slice(0,300))+'\n\nFil-sti: '+fp);
         });
         return r.json();
       }).then(function(data) {
-        var sheetNames=data.value.map(function(s){return s.name;});
-        showLoading('LAESЕР MAANEDSARK...');
-
-        // Read all sheets in parallel
-        var fetches=sheetNames.map(function(name) {
+        var names=data.value.map(function(s){return s.name;});
+        showLoading('LAESЕР '+names.length+' ARK...');
+        // Fetch all sheets in parallel
+        return Promise.all(names.map(function(name){
           return fetch(base+'/worksheets(\''+encodeURIComponent(name)+'\')/usedRange',{headers:{Authorization:'Bearer '+token}})
             .then(function(r){return r.ok?r.json():null;})
-            .then(function(d){return {name:name,values:d?d.values:null};});
-        });
-        return Promise.all(fetches).then(function(results) {
-          var sheets={};
-          results.forEach(function(r){if(r.values)sheets[r.name]=r.values;});
-          return sheets;
-        });
+            .then(function(d){return{name:name,values:d?d.values:[]};});
+        }));
       }).then(function(sheets) {
         showLoading('BEHANDLER DATA...');
-        var parsed=parseAllSheets(sheets);
+        var sheetMap={};
+        sheets.forEach(function(s){sheetMap[s.name]=s.values;});
+        var parsed=parseAllSheets(sheetMap);
         renderAll(parsed);
         document.getElementById('lastupdated').textContent='Sidst opdateret: '+new Date().toLocaleString('da-DK')+' - Kilde: OneDrive';
         showDash();
@@ -366,86 +344,114 @@ function loadData() {
   });
 }
 
-// ── PARSE ALL SHEETS ──────────────────────────────────────────────────────────
-function parseAllSheets(sheets) {
-  var n=function(v){var x=parseFloat(v);return isNaN(x)?0:x;};
-
-  // Find total sheet
-  var totalName=Object.keys(sheets).find(function(k){return /total|arbejdstid/i.test(k);});
-  var totalVals=totalName?sheets[totalName]:null;
-  var summary={total:0,gns_md:0,gns_uge:0,gns_dag:0,normtid:NORM_AAR,overtid:0,fleks:0};
-  if(totalVals){
-    summary.total=n(totalVals[0]&&totalVals[0][1]);
-    summary.gns_md=n(totalVals[1]&&totalVals[1][1]);
-    summary.gns_uge=n(totalVals[2]&&totalVals[2][1]);
-    summary.gns_dag=n(totalVals[3]&&totalVals[3][1]);
+// ── PARSE ─────────────────────────────────────────────────────────────────────
+function parseAllSheets(sheetMap) {
+  function n(v){var x=parseFloat(v);return isNaN(x)?0:x;}
+  function toDate(raw){
+    if(!raw||raw==='Dato(er)') return null;
+    var d;
+    if(typeof raw==='number'){d=new Date((raw-25569)*86400000);}
+    else{d=new Date(raw);}
+    return isNaN(d.getTime())?null:d;
   }
 
-  // Monthly sheets: detect by having "Dato(er)" in row 4
-  var monthlySheets=Object.keys(sheets).filter(function(k){
-    var v=sheets[k];
-    return v&&v[4]&&String(v[4][2]||'').toLowerCase().includes('dato');
+  // ── SUMMARY: read from total sheet using row-label search (robust) ──
+  var totalSheet=null;
+  Object.keys(sheetMap).forEach(function(k){
+    if(/total/i.test(k)||(/arbejdstid/i.test(k)&&!totalSheet)) totalSheet=k;
   });
+  var summary={total:0,gns_md:0,gns_uge:0,gns_dag:0,normtid:NORM_AAR,overtid:0,fleks:0};
+  if(totalSheet){
+    var tv=sheetMap[totalSheet];
+    tv.forEach(function(row){
+      var label=String(row[0]||'');
+      if(/Pr\. [aå]r/i.test(label))   { summary.total=n(row[1]); summary.normtid=n(row[2]); }
+      if(/Gns pr\. m[aå]/i.test(label)) summary.gns_md=n(row[1]);
+      if(/Gns pr\. uge/i.test(label))   summary.gns_uge=n(row[1]);
+      if(/Gns pr\. dag/i.test(label))   summary.gns_dag=n(row[1]);
+    });
+  }
 
+  // ── MONTHLY + DAILY: read from each monthly sheet ──
+  // A monthly sheet is identified by having "Dato(er)" in row 4, col 2
   var all_days=[], monthly=[], fleks_total=0;
 
-  monthlySheets.forEach(function(sheetName) {
-    var vals=sheets[sheetName];
-    // Row 0: col2=maaned
-    var maanedLabel=String(vals[0]&&vals[0][2]||'').trim();
-    // Row 3: col2=normtid(160), col4=samlet_timer, col5=normal_arbejdstid, col6=overtidstimer
+  Object.keys(sheetMap).forEach(function(sheetName){
+    var vals=sheetMap[sheetName];
+    if(!vals||vals.length<5) return;
+    // Check row 4 for header pattern: col2 should be "Dato(er)" or similar
+    var hdr=String(vals[4]&&vals[4][2]||'').toLowerCase();
+    if(!hdr.includes('dato')) return;
+
+    // Row 0 col 2: month name label
+    var maanedRaw=String(vals[0]&&vals[0][2]||'').trim();
+    // Row 3: col4=samlet_timer, col5=normal_md, col6=overtidstimer
     var samlet=n(vals[3]&&vals[3][4]);
     var normal_md=n(vals[3]&&vals[3][5]);
     var overtid_md=n(vals[3]&&vals[3][6]);
-    fleks_total+=overtid_md;
+
+    // Build label from month name + year (derive year from first date)
+    var label=maanedRaw;
+    // Try to get a nicer label from the first date in the sheet
+    for(var i=5;i<Math.min(vals.length,8);i++){
+      var d=toDate(vals[i]&&vals[i][2]);
+      if(d){label=d.toLocaleDateString('da-DK',{month:'short',year:'numeric'});break;}
+    }
+
     if(samlet>0){
-      monthly.push({label:maanedLabel, timer:Math.round(samlet*100)/100, normal:Math.round(normal_md*100)/100, overtid:Math.round(overtid_md*100)/100});
+      fleks_total+=overtid_md;
+      monthly.push({label:label,timer:Math.round(samlet*100)/100,normal:Math.round(normal_md*100)/100,overtid:Math.round(overtid_md*100)/100});
     }
 
     // Daily rows from row 5: col2=dato, col3=ugedag, col4=fra, col5=til, col6=timer
-    for(var i=5;i<vals.length;i++){
-      var row=vals[i];
-      if(!row||!row[2]) continue;
-      var rawDate=row[2];
-      if(typeof rawDate==='string'&&rawDate.toLowerCase().includes('dato')) continue;
-      var d; 
-      if(typeof rawDate==='number'){d=new Date((rawDate-25569)*86400000);}
-      else{d=new Date(rawDate);}
-      if(isNaN(d.getTime())) continue;
-      var dag=String(row[3]||'').toLowerCase().trim();
+    for(var j=5;j<vals.length;j++){
+      var row=vals[j];
+      if(!row) continue;
+      var d=toDate(row[2]);
+      if(!d) continue;
+      var dagRaw=String(row[3]||'').toLowerCase().trim();
+      var dagNorm=normDag(dagRaw);
+      // Skip weekends
+      if(WEEKENDS.indexOf(dagNorm)>=0) continue;
       var timer=n(row[6]);
-      // Skip weekends entirely
-      if(WEEKENDS.indexOf(dag)>=0) continue;
-      var fra=String(row[4]||''); if(fra.length>5)fra=fra.slice(0,5);
-      var til=String(row[5]||''); if(til.length>5)til=til.slice(0,5);
-      all_days.push({dato:d.toISOString().slice(0,10),timer:Math.round(timer*1000)/1000,dag:dag,fra:fra,til:til,d:d});
+      all_days.push({dato:d.toISOString().slice(0,10),timer:Math.round(timer*1000)/1000,dag:dagRaw,dagNorm:dagNorm,d:d});
     }
   });
 
-  summary.fleks=Math.round(fleks_total*100)/100;
-  summary.overtid=Math.round(fleks_total*100)/100;
-
+  // Sort monthly by date
+  monthly.sort(function(a,b){return new Date('01 '+a.label)-new Date('01 '+b.label);});
   // Sort days
   all_days.sort(function(a,b){return a.d-b.d;});
+  // Deduplicate days (same date might appear in overlap)
+  var seen={}, unique_days=[];
+  all_days.forEach(function(d){
+    if(!seen[d.dato]){seen[d.dato]=true;unique_days.push(d);}
+  });
+  all_days=unique_days;
+
+  summary.fleks=Math.round(fleks_total*100)/100;
+  summary.overtid=Math.round(fleks_total*100)/100;
 
   // Weekly
   var wmap={};
   all_days.filter(function(x){return x.timer>0;}).forEach(function(x){
     var mon=new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
     var wk=mon.toISOString().slice(0,10);
-    var wn='Uge '+isoWeek(x.d);
-    if(!wmap[wk])wmap[wk]={label:wn,timer:0,start:mon};
+    if(!wmap[wk])wmap[wk]={label:'Uge '+isoWeek(x.d),timer:0,start:mon};
     wmap[wk].timer+=x.timer;
   });
-  var weekly=Object.values(wmap).sort(function(a,b){return a.start-b.start;}).map(function(w){return{label:w.label,timer:Math.round(w.timer*100)/100};});
+  var weekly=Object.values(wmap).sort(function(a,b){return a.start-b.start;}).map(function(w){
+    return{label:w.label,timer:Math.round(w.timer*100)/100};
+  });
 
-  // Day averages (weekdays only)
+  // Day averages
   var dagOrder=['mandag','tirsdag','onsdag','torsdag','fredag'];
   var dagShort=['Man','Tir','Ons','Tor','Fre'];
   var dmap={};
   all_days.filter(function(x){return x.timer>0;}).forEach(function(x){
-    if(!dmap[x.dag])dmap[x.dag]={sum:0,count:0};
-    dmap[x.dag].sum+=x.timer; dmap[x.dag].count++;
+    var dn=x.dagNorm;
+    if(!dmap[dn])dmap[dn]={sum:0,count:0};
+    dmap[dn].sum+=x.timer; dmap[dn].count++;
   });
   var dag=dagOrder.map(function(nm,i){
     var e=dmap[nm]; return{dag:dagShort[i],gns:e?Math.round(e.sum/e.count*100)/100:0};
@@ -463,8 +469,9 @@ function isoWeek(d){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function renderAll(data){
-  var s=data.summary,days=data.days,monthly=data.monthly,weekly=data.weekly,dag=data.dag;
+  var s=data.summary, days=data.days, monthly=data.monthly, weekly=data.weekly, dag=data.dag;
 
+  // Subtitle
   if(days.length>0){
     var fmt=function(d){return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});};
     document.getElementById('dsub').textContent=fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
@@ -473,21 +480,23 @@ function renderAll(data){
   // 5 KPI cards
   var fleksPos=s.fleks>=0;
   var kpis=[
-    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:monthly.length+' maaneder'},
-    {label:'Flekssaldo',val:(fleksPos?'+':'')+s.fleks.toFixed(1),unit:'timer optjent overtid',badge:fleksPos?'Over norm':'Under norm',over:!fleksPos,cls:'fleks'},
+    {label:'Timer i alt',val:s.total.toFixed(1),unit:'registreret i alt',badge:monthly.length+' maaneder'},
+    {label:'Flekssaldo',val:(fleksPos?'+':'')+s.fleks.toFixed(1)+'t',unit:'timer over norm',badge:fleksPos?'OVERSKUD':'UNDERSKUD',over:!fleksPos,cls:fleksPos?'fleks':'fleks-neg'},
     {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',over:s.gns_uge<NORM_UGE},
     {label:'Snit pr. maaned',val:s.gns_md.toFixed(1),unit:'timer pr. maaned',badge:'norm: '+NORM_MD+'t',cls:'b'},
     {label:'Snit pr. dag',val:s.gns_dag.toFixed(2),unit:'timer (norm: '+NORM_DAG+'t)',badge:(s.gns_dag>=NORM_DAG?'+':'')+(s.gns_dag-NORM_DAG).toFixed(2)+'t',over:s.gns_dag<NORM_DAG}
   ];
   document.getElementById('kpis').innerHTML=kpis.map(function(c){
-    return '<div class="card '+(c.cls||'')+'"><div class="clabel">'+c.label+'</div><div class="cval">'+c.val+'</div><div class="cunit">'+c.unit+'</div><div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
+    return '<div class="card '+(c.cls||'')+'">'+
+      '<div class="clabel">'+c.label+'</div>'+
+      '<div class="cval">'+c.val+'</div>'+
+      '<div class="cunit">'+c.unit+'</div>'+
+      '<div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
   }).join('');
 
-  // Monthly bars — norm line placed correctly relative to each bar's actual width
+  // Monthly bars — norm line always at same % position
   var workMonths=monthly.filter(function(m){return m.timer>0;});
-  var maxM=Math.max.apply(null,workMonths.map(function(m){return m.timer;}).concat([NORM_MD]));
-  // Add 10% headroom so bars never touch the edge
-  maxM=maxM*1.08;
+  var maxM=Math.max.apply(null,workMonths.map(function(m){return m.timer;}).concat([NORM_MD]))*1.1;
   var normPct=(NORM_MD/maxM*100).toFixed(2);
   document.getElementById('monthbars').innerHTML=workMonths.map(function(m){
     var p=(m.timer/maxM*100).toFixed(2);
@@ -495,7 +504,7 @@ function renderAll(data){
       '<div class="blbl">'+m.label+'</div>'+
       '<div class="btrack">'+
         '<div class="bfill '+(m.timer<m.normal?'u':'')+'" style="width:'+p+'%"></div>'+
-        '<div class="bnorm" style="left:'+normPct+'%;position:absolute;top:0;bottom:0;width:2px;background:var(--accent2);opacity:.9;pointer-events:none"></div>'+
+        '<div class="bnorm" style="left:'+normPct+'%"></div>'+
       '</div>'+
       '<div class="bval">'+m.timer.toFixed(1)+'t</div>'+
     '</div>';
@@ -503,27 +512,23 @@ function renderAll(data){
   '<div style="margin-top:12px;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)">'+
   '<div style="width:12px;height:2px;background:var(--accent2)"></div>Normtid '+NORM_MD+'t/md</div>';
 
-  // Flex breakdown per month
-  var maxFleks=Math.max.apply(null,workMonths.map(function(m){return Math.abs(m.overtid);}));
-  maxFleks=Math.max(maxFleks,1);
+  // Flex breakdown
+  var maxF=Math.max.apply(null,workMonths.map(function(m){return Math.abs(m.overtid);}).concat([1]));
   document.getElementById('fleksbreakdown').innerHTML=workMonths.map(function(m){
     var pos=m.overtid>=0;
-    var pct=(Math.abs(m.overtid)/maxFleks*100).toFixed(1);
-    var col=pos?'<div class="fbfill-pos" style="width:'+pct+'%"></div>':'<div class="fbfill-neg" style="width:'+pct+'%"></div>';
+    var pct=(Math.abs(m.overtid)/maxF*100).toFixed(1);
     return '<div class="fbrow">'+
       '<div class="fblbl">'+m.label+'</div>'+
-      '<div class="fbtrack">'+col+'</div>'+
+      '<div class="fbtrack"><div class="'+(pos?'fbpos':'fbneg')+'" style="width:'+pct+'%"></div></div>'+
       '<div class="fbval" style="color:'+(pos?'var(--accent)':'var(--accent2)')+'">'+
-        (pos?'+':'')+m.overtid.toFixed(1)+'t</div>'+
-    '</div>';
+        (pos?'+':'')+m.overtid.toFixed(1)+'t</div></div>';
   }).join('')+
   '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">'+
     '<span style="font-size:10px;color:var(--muted)">Total flekssaldo</span>'+
-    '<span style="font-size:1.2rem;font-family:Fraunces,serif;color:'+(s.fleks>=0?'var(--accent)':'var(--accent2)')+'">'+
-      (s.fleks>=0?'+':'')+s.fleks.toFixed(1)+'t</span>'+
-  '</div>';
+    '<span style="font-size:1.4rem;font-family:Fraunces,serif;font-weight:600;color:'+(s.fleks>=0?'var(--accent)':'var(--accent2)')+'">'+
+      (s.fleks>=0?'+':'')+s.fleks.toFixed(1)+'t</span></div>';
 
-  // Weekly chart
+  // Weekly
   renderWeekly(weekly);
 
   // Ring
@@ -539,12 +544,14 @@ function renderAll(data){
     '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: '+(NORM_AAR-s.total).toFixed(1)+'t</div>';
 
   // Day bars
-  var maxD=Math.max.apply(null,dag.map(function(d){return d.gns;}));
+  var maxD=Math.max.apply(null,dag.map(function(d){return d.gns;}).concat([1]));
   document.getElementById('daybars').innerHTML=dag.map(function(d){
-    return '<div class="dcol"><div class="dval">'+d.gns+'t</div><div class="dbar" style="height:'+(d.gns/maxD*80).toFixed(0)+'px"></div><div class="dlbl">'+d.dag+'</div></div>';
+    return '<div class="dcol"><div class="dval">'+d.gns+'t</div>'+
+      '<div class="dbar" style="height:'+(d.gns/maxD*80).toFixed(0)+'px"></div>'+
+      '<div class="dlbl">'+d.dag+'</div></div>';
   }).join('');
 
-  // Recent table (only weekdays)
+  // Recent table
   var dnames={'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre'};
   var recent=days.filter(function(x){return x.timer>0;}).slice(-10).reverse();
   document.getElementById('recenttbl').innerHTML=
@@ -566,7 +573,9 @@ function renderAll(data){
 function renderWeekly(weekly){
   var wrap=document.getElementById('wkwrap'),W=wrap.clientWidth||600;
   var H=160,pL=8,pR=8,pT=18,pB=30,iW=W-pL-pR,iH=H-pT-pB;
-  var vals=weekly.map(function(w){return w.timer;}), maxV=Math.max.apply(null,vals)+3, minV=Math.max(0,Math.min.apply(null,vals)-3);
+  var vals=weekly.map(function(w){return w.timer;});
+  if(!vals.length){wrap.innerHTML='<p style="color:var(--muted);font-size:11px">Ingen data</p>';return;}
+  var maxV=Math.max.apply(null,vals)+3, minV=Math.max(0,Math.min.apply(null,vals)-3);
   var xS=weekly.length>1?iW/(weekly.length-1):iW;
   function yS(v){return pT+iH-(v-minV)/(maxV-minV)*iH;}
   function xP(i){return pL+i*xS;}
@@ -576,8 +585,8 @@ function renderWeekly(weekly){
   var lp=weekly.map(function(w,i){return(i===0?'M':'L')+xP(i)+','+yS(w.timer);}).join(' ');
   var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'+
     '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/><stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/></linearGradient></defs>'+
-    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.6"/>'+
-    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.8" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
+    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.7"/>'+
+    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.9" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
     '<polygon points="'+pts+' '+ac+'" fill="url(#ag)"/>'+
     '<path d="'+lp+'" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>';
   weekly.forEach(function(w,i){
@@ -591,7 +600,7 @@ function renderWeekly(weekly){
 function renderHeatmap(days){
   if(!days.length) return;
   var dmap={};
-  days.forEach(function(d){dmap[d.dato]=d.timer;});
+  days.forEach(function(d){if(d.timer>0)dmap[d.dato]=d.timer;});
   var minDate=new Date(days[0].d); minDate.setDate(1);
   var maxDate=new Date(days[days.length-1].d);
   var maxH=Math.max.apply(null,days.map(function(d){return d.timer;}).concat([1]));
