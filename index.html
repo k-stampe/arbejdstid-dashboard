@@ -348,12 +348,11 @@ function loadData() {
 function parseAllSheets(sheetMap) {
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
   
-  // 1. Hent tal fra hovedarket
   var totalSheet = sheetMap['Arbejdstid total'] || [];
   var summary = {
     total: 0, gns_md: 0, gns_uge: 0, gns_dag: 0,
-    // HER HENTES D6: Række 6 (index 5), Kolonne D (index 3)
-    overtid: n(totalSheet[5] && totalSheet[5][3]) 
+    // Vi kalder den 'fleks' så renderAll kan finde den
+    fleks: n(totalSheet[5] && totalSheet[5][3]) 
   };
   
   if (totalSheet.length > 0) {
@@ -423,44 +422,44 @@ function parseAllSheets(sheetMap) {
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
-function renderAll(data){
-  var s=data.summary, days=data.days, monthly=data.monthly, weekly=data.weekly, dag=data.dag;
-
-  // Subtitle
-  if(days.length>0){
-    var fmt=function(d){return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});};
-    document.getElementById('dsub').textContent=fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
-  }
-
-  // 5 KPI cards
-  var fleksPos=s.fleks>=0;
-  var kpis=[
-    {label:'Timer i alt',val:s.total.toFixed(1),unit:'registreret i alt',badge:monthly.length+' maaneder'},
-    {label:'Flekssaldo',val:(fleksPos?'+':'')+s.fleks.toFixed(1)+'t',unit:'timer over norm',badge:fleksPos?'OVERSKUD':'UNDERSKUD',over:!fleksPos,cls:fleksPos?'fleks':'fleks-neg'},
-    {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',over:s.gns_uge<NORM_UGE},
-    {label:'Snit pr. maaned',val:s.gns_md.toFixed(1),unit:'timer pr. maaned',badge:'norm: '+NORM_MD+'t',cls:'b'},
-    {label:'Snit pr. dag',val:s.gns_dag.toFixed(2),unit:'timer (norm: '+NORM_DAG+'t)',badge:(s.gns_dag>=NORM_DAG?'+':'')+(s.gns_dag-NORM_DAG).toFixed(2)+'t',over:s.gns_dag<NORM_DAG}
+function renderAll(data) {
+  var s = data.summary;
+  
+  // 1. KPI Kort (Flekssaldo fra s.fleks)
+  var kpis = [
+    {label:'Flekssaldo', val: (s.fleks || 0).toFixed(1)+'t', unit:'samlet saldo', badge: (s.fleks || 0) >= 0 ? 'Overskud' : 'Underskud', over: (s.fleks || 0) < 0},
+    {label:'Gns pr. uge', val: s.gns_uge.toFixed(1), unit:'t (norm: 37t)', badge:(s.gns_uge-37).toFixed(1)+'t', over: s.gns_uge < 37},
+    {label:'Gns pr. dag', val: s.gns_dag.toFixed(2), unit:'t (norm: 7.4t)', badge:(s.gns_dag-7.4).toFixed(2)+'t', over: s.gns_dag < 7.4}
   ];
-  document.getElementById('kpis').innerHTML=kpis.map(function(c){
-    return '<div class="card '+(c.cls||'')+'">'+
-      '<div class="clabel">'+c.label+'</div>'+
-      '<div class="cval">'+c.val+'</div>'+
-      '<div class="cunit">'+c.unit+'</div>'+
-      '<div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
-  }).join('');
 
-// --- Måneds-barer ---
-  var maxM = Math.max.apply(null, data.monthly.map(m => m.timer).concat([180]));
+  document.getElementById('kpis').innerHTML = kpis.map(c => `
+    <div class="card">
+      <div class="clabel">${c.label}</div>
+      <div class="cval">${c.val}</div>
+      <div class="cunit">${c.unit}</div>
+      <div class="cbadge ${c.over ? 'o' : ''}">${c.badge}</div>
+    </div>
+  `).join('');
+
+  // 2. Måneds-barer (Retter de "tilfældige" røde streger)
+  var maxM = Math.max.apply(null, data.monthly.map(m => m.timer).concat([180])); 
   document.getElementById('monthbars').innerHTML = data.monthly.map(m => {
     var p = (m.timer / maxM * 100).toFixed(1);
-    var np = (160 / maxM * 100).toFixed(1); // LÅST TIL 160
+    var np = (160 / maxM * 100).toFixed(1); // Den røde streg er nu altid præcis 160t
     return `
       <div class="brow">
         <div class="blbl">${m.label}</div>
-        <div class="btrack"><div class="bfill ${m.timer < 160 ? 'u' : ''}" style="width:${p}%"><div class="bnorm" style="left:${np}%"></div></div></div>
+        <div class="btrack">
+          <div class="bfill ${m.timer < 160 ? 'u' : ''}" style="width:${p}%">
+            <div class="bnorm" style="left:${np}%"></div>
+          </div>
+        </div>
         <div class="bval">${m.timer.toFixed(1)}t</div>
       </div>`;
   }).join('');
+
+  // ... behold resten af renderAll (ugedage, heatmap osv.) ...
+}
 
   // Flex breakdown
   var maxF=Math.max.apply(null,workMonths.map(function(m){return Math.abs(m.overtid);}).concat([1]));
