@@ -49,7 +49,7 @@ button:hover { opacity: 0.9; }
 .brow { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .blbl { width: 80px; font-size: 11px; color: var(--muted); }
 .btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; position: relative; overflow: hidden; }
-.bfill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; }
+.bfill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; transition: width 0.6s ease; }
 .bfill.u { background: var(--border); }
 .bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); z-index: 2; }
 .bval { width: 50px; text-align: right; font-size: 11px; font-weight: 500; }
@@ -115,7 +115,7 @@ circle { fill: none; stroke-width: 12; stroke-linecap: round; }
   </div>
 </div>
 
-<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
 <script>
 const msalConfig = {
   auth: {
@@ -125,19 +125,21 @@ const msalConfig = {
   }
 };
 
-const msalInst = new msal.PublicClientApplication(msalConfig);
+let msalInst;
+let isMsalReady = false;
+
+// Initialiser MSAL med det samme
+(async () => {
+    msalInst = new msal.PublicClientApplication(msalConfig);
+    await msalInst.initialize();
+    isMsalReady = true;
+})();
+
 const FILE_NAME = "Arbejdstidsskema.xlsx";
 
-// FIX: Initialisering af login-systemet
-async function ensureInit() {
-  if (msalInst.handleRedirectPromise) {
-    await msalInst.initialize();
-  }
-}
-
 async function login() {
+  if (!isMsalReady) return;
   try {
-    await ensureInit();
     const res = await msalInst.loginPopup({ scopes: ["files.read"] });
     document.getElementById('setup').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
@@ -148,7 +150,6 @@ async function login() {
 
 async function loadData() {
   try {
-    await ensureInit();
     const accounts = msalInst.getAllAccounts();
     const tokenRes = await msalInst.acquireTokenSilent({ scopes: ["files.read"], account: accounts[0] });
     const authH = { 'Authorization': 'Bearer ' + tokenRes.accessToken };
@@ -157,7 +158,7 @@ async function loadData() {
     const searchRes = await search.json();
     const file = searchRes.value.find(f => f.name === FILE_NAME);
     
-    if(!file) throw new Error("Filen blev ikke fundet.");
+    if(!file) throw new Error("Filen '" + FILE_NAME + "' ikke fundet.");
 
     const dataRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/workbook/worksheets('Arbejdstid total')/usedRange`, { headers: authH });
     const json = await dataRes.json();
@@ -191,21 +192,27 @@ function parseData(values) {
     if (!row) continue;
     
     // Tjekker både venstre tabel (0,3,5) og højre tabel (7,10,11)
-    // FIX: Vi tjekker om "Fra kl" er udfyldt (kolonne 1 eller 8) for at undgå "Total"-rækker
     const configs = [
-      {d:0, h:3, n:5, check:1}, 
-      {d:7, h:10, n:11, check:8}
+      {d:0, h:3, n:5, check:1}, // check:1 er "Fra kl" i venstre tabel
+      {d:7, h:10, n:11, check:8} // check:8 er "Fra kl" i højre tabel
     ];
     
     configs.forEach(conf => {
       const rawDate = row[conf.d];
       const timer = n(row[conf.h]);
-      const hasTimeInput = row[conf.check] !== null && row[conf.check] !== "";
+      // VIGTIGT: Vi tjekker om der står noget i "Fra kl" feltet. 
+      // Hvis feltet er tomt, er det en "Ugens total"-række, som vi skal ignorere.
+      const hasStartTime = row[conf.check] !== null && String(row[conf.check]).trim() !== "";
 
-      if (rawDate && timer > 0 && hasTimeInput) {
+      if (rawDate && timer > 0 && hasStartTime) {
         let d = typeof rawDate === 'number' ? new Date((rawDate - 25569) * 86400000) : new Date(rawDate);
         if (!isNaN(d.getTime())) {
-          days.push({ dato: d.toISOString().slice(0,10), timer: timer, dag: String(row[conf.n]||'').toLowerCase().trim(), d: d });
+          days.push({ 
+            dato: d.toISOString().slice(0,10), 
+            timer: timer, 
+            dag: String(row[conf.n]||'').toLowerCase().trim(), 
+            d: d 
+          });
         }
       }
     });
@@ -223,4 +230,5 @@ function parseData(values) {
   const dagShort = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
   const dmap = {};
   days.forEach(x => {
-    const clean = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae
+    const clean = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'aa');
+    if (!
