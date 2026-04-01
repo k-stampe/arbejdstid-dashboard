@@ -7,15 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,300;9..144,600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f4f7fa;          /* Lys grå-blå baggrund */
-  --surface: #ffffff;     /* Hvid til kort */
-  --surface2: #e9ecef;    /* Lys grå til felter */
-  --border: #d1d9e6;      /* Blød kant */
-  --accent: #10b981;      /* Grøn */
-  --accent2: #e11d48;     /* Rød */
-  --accent3: #2563eb;     /* Blå */
-  --text: #1e293b;        /* Mørk tekst */
-  --muted: #64748b;       /* Grå tekst */
+  --bg: #f4f7fa;
+  --surface: #ffffff;
+  --surface2: #e9ecef;
+  --border: #d1d9e6;
+  --accent: #10b981;
+  --accent2: #e11d48;
+  --accent3: #2563eb;
+  --text: #1e293b;
+  --muted: #64748b;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,18 +32,16 @@ button:hover { opacity: 0.9; }
 #dashboard { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
 
-/* KPI Grid - Nu med 5 kort */
 .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent3); opacity: 0.5; }
-.card.flex::before { background: var(--accent2); opacity: 1; } /* Særlig farve til fleks */
+.card.flex::before { background: var(--accent2); opacity: 1; }
 .clabel { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 .cval { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
 .cunit { font-size: 11px; color: var(--muted); }
 .cbadge { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--surface2); color: var(--muted); }
 .cbadge.o { background: rgba(225, 29, 72, 0.1); color: var(--accent2); }
 
-/* Grafer */
 .main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; margin-bottom: 24px; }
 .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .stitle { font-family: 'Fraunces', serif; font-size: 18px; margin-bottom: 20px; display: flex; justify-content: space-between; }
@@ -51,12 +49,11 @@ button:hover { opacity: 0.9; }
 .brow { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .blbl { width: 80px; font-size: 11px; color: var(--muted); }
 .btrack { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; position: relative; overflow: hidden; }
-.bfill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; transition: width 1s ease-out; }
+.bfill { height: 100%; background: linear-gradient(90deg, var(--accent3), var(--accent)); border-radius: 4px; }
 .bfill.u { background: var(--border); }
 .bnorm { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2); z-index: 2; }
 .bval { width: 50px; text-align: right; font-size: 11px; font-weight: 500; }
 
-/* Ring graf */
 .ring-box { display: flex; justify-content: center; align-items: center; position: relative; height: 200px; }
 svg { transform: rotate(-90deg); }
 circle { fill: none; stroke-width: 12; stroke-linecap: round; }
@@ -79,7 +76,7 @@ circle { fill: none; stroke-width: 12; stroke-linecap: round; }
   <div class="box">
     <h1>Arbejdsliv</h1>
     <p class="sub">Log ind for at hente data fra OneDrive</p>
-    <button onclick="login()">Forbind med Microsoft</button>
+    <button id="loginBtn" onclick="login()">Forbind med Microsoft</button>
   </div>
 </div>
 
@@ -120,7 +117,6 @@ circle { fill: none; stroke-width: 12; stroke-linecap: round; }
 
 <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <script>
-// KONFIGURATION - Behold din ClientID her!
 const msalConfig = {
   auth: {
     clientId: 'a40f803c-742a-4467-bc13-8d6935da6696',
@@ -130,10 +126,18 @@ const msalConfig = {
 };
 
 const msalInst = new msal.PublicClientApplication(msalConfig);
-const FILE_NAME = "Arbejdstidsskema.xlsx"; 
+const FILE_NAME = "Arbejdstidsskema.xlsx";
+
+// FIX: Initialisering af login-systemet
+async function ensureInit() {
+  if (msalInst.handleRedirectPromise) {
+    await msalInst.initialize();
+  }
+}
 
 async function login() {
   try {
+    await ensureInit();
     const res = await msalInst.loginPopup({ scopes: ["files.read"] });
     document.getElementById('setup').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
@@ -144,6 +148,7 @@ async function login() {
 
 async function loadData() {
   try {
+    await ensureInit();
     const accounts = msalInst.getAllAccounts();
     const tokenRes = await msalInst.acquireTokenSilent({ scopes: ["files.read"], account: accounts[0] });
     const authH = { 'Authorization': 'Bearer ' + tokenRes.accessToken };
@@ -152,21 +157,17 @@ async function loadData() {
     const searchRes = await search.json();
     const file = searchRes.value.find(f => f.name === FILE_NAME);
     
-    if(!file) throw new Error("Filen blev ikke fundet på OneDrive.");
+    if(!file) throw new Error("Filen blev ikke fundet.");
 
     const dataRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/workbook/worksheets('Arbejdstid total')/usedRange`, { headers: authH });
     const json = await dataRes.json();
     
-    const dashboardData = parseData(json.values);
-    renderAll(dashboardData);
+    renderAll(parseData(json.values));
   } catch(e) { console.error(e); }
 }
 
-// ---- PARSER (RETTET) ----
 function parseData(values) {
-  function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
-  
-  // Find summary rækker ved at lede efter tekst-labels
+  const n = (v) => { var x = parseFloat(v); return isNaN(x) ? 0 : x; };
   const findRow = (label) => values.find(r => r[0] && String(r[0]).toLowerCase().includes(label.toLowerCase()));
 
   const rowTotal = findRow('Pr. år');
@@ -180,38 +181,37 @@ function parseData(values) {
     gns_md: n(rowMd && rowMd[1]),
     gns_uge: n(rowUge && rowUge[1]),
     gns_dag: n(rowDag && rowDag[1]),
-    overtid: n(rowFlex && rowFlex[3]), // Selve saldoen
+    overtid: n(rowFlex && rowFlex[3]),
     norm_aar: n(rowTotal && rowTotal[2])
   };
 
   const days = [];
-  // Læs fra række 15 (index 14) og frem. Tjekker både venstre og højre tabel i arket.
   for (let i = 14; i < values.length; i++) {
     const row = values[i];
     if (!row) continue;
-
-    const configs = [{d:0, h:3, n:5}, {d:7, h:10, n:11}]; // d=dato, h=timer, n=navn
+    
+    // Tjekker både venstre tabel (0,3,5) og højre tabel (7,10,11)
+    // FIX: Vi tjekker om "Fra kl" er udfyldt (kolonne 1 eller 8) for at undgå "Total"-rækker
+    const configs = [
+      {d:0, h:3, n:5, check:1}, 
+      {d:7, h:10, n:11, check:8}
+    ];
     
     configs.forEach(conf => {
       const rawDate = row[conf.d];
       const timer = n(row[conf.h]);
-      const dagNavn = String(row[conf.n] || '').toLowerCase().trim();
+      const hasTimeInput = row[conf.check] !== null && row[conf.check] !== "";
 
-      if (rawDate && timer > 0) { // KUN dage med faktiske timer (fjerner weekend-spøgelser)
-        let d;
-        if (typeof rawDate === 'number') { d = new Date((rawDate - 25569) * 86400000); }
-        else { d = new Date(rawDate); }
-        
+      if (rawDate && timer > 0 && hasTimeInput) {
+        let d = typeof rawDate === 'number' ? new Date((rawDate - 25569) * 86400000) : new Date(rawDate);
         if (!isNaN(d.getTime())) {
-          days.push({ dato: d.toISOString().slice(0,10), timer: timer, dag: dagNavn, d: d });
+          days.push({ dato: d.toISOString().slice(0,10), timer: timer, dag: String(row[conf.n]||'').toLowerCase().trim(), d: d });
         }
       }
     });
   }
 
   days.sort((a,b) => a.d - b.d);
-  
-  // Måneds-samling
   const mmap = {};
   days.forEach(x => { const k = x.dato.slice(0,7); mmap[k] = (mmap[k] || 0) + x.timer; });
   const monthly = Object.keys(mmap).sort().map(k => ({
@@ -219,127 +219,8 @@ function parseData(values) {
     timer: mmap[k]
   }));
 
-  // Uge-samling
-  const wmap = {};
-  days.forEach(x => {
-    const mon = new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
-    const wk = mon.toISOString().slice(0,10);
-    if (!wmap[wk]) wmap[wk] = { label:'Uge '+isoWeek(x.d), timer:0, start:mon };
-    wmap[wk].timer += x.timer;
-  });
-  const weekly = Object.values(wmap).sort((a,b) => a.start-b.start).map(w => ({ label: w.label, timer: w.timer }));
-
-  // Dag-fordeling
   const dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
   const dagShort = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
   const dmap = {};
   days.forEach(x => {
-    const clean = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'aa');
-    if (!dmap[clean]) dmap[clean] = {sum:0,count:0};
-    dmap[clean].sum += x.timer; dmap[clean].count++;
-  });
-  const dag = dagFull.map((n,i) => {
-    const e = dmap[n]; return { dag:dagShort[i], gns: e ? e.sum/e.count : 0 };
-  }).filter(d => d.gns > 0);
-
-  return { summary, days, monthly, weekly, dag };
-}
-
-function isoWeek(d) {
-  const t = new Date(d.valueOf()); t.setDate(t.getDate() + (4 - (t.getDay() || 7)));
-  const s = new Date(t.getFullYear(), 0, 1);
-  return Math.ceil((((t - s) / 86400000) + 1) / 7);
-}
-
-// ---- RENDER (RETTET) ----
-function renderAll(data) {
-  const s = data.summary;
-  
-  // 5 KPI Kort
-  const kpis = [
-    {label:'Fleks Saldo', val:s.overtid.toFixed(1), unit:'timer totalt', badge: s.overtid >= 0 ? 'OVERSKUD' : 'UNDERSKUD', cls:'flex', over: s.overtid < 0},
-    {label:'Timer i alt', val:s.total.toFixed(0), unit:'timer i år', badge: 'Status', cls:''},
-    {label:'Snit / Uge', val:s.gns_uge.toFixed(1), unit:'timer pr. uge', badge: (s.gns_uge-37).toFixed(1)+'t vs norm', over: s.gns_uge < 37},
-    {label:'Snit / Md', val:s.gns_md.toFixed(0), unit:'timer pr. md', badge: data.monthly.length+' måneder'},
-    {label:'Snit / Dag', val:s.gns_dag.toFixed(1), unit:'timer pr. dag', badge: (s.gns_dag-7.4).toFixed(1)+'t vs norm', over: s.gns_dag < 7.4}
-  ];
-  
-  document.getElementById('kpis').innerHTML = kpis.map(c => `
-    <div class="card ${c.cls}">
-      <div class="clabel">${c.label}</div>
-      <div class="cval">${c.val}</div>
-      <div class="cunit">${c.unit}</div>
-      <div class="cbadge ${c.over?'o':''}">${c.badge}</div>
-    </div>
-  `).join('');
-
-  // Månedsgraf med fikseret rød streg
-  const maxM = Math.max(...data.monthly.map(m => m.timer), 180);
-  document.getElementById('monthbars').innerHTML = data.monthly.map(m => {
-    const p = (m.timer / maxM * 100);
-    const np = (160 / maxM * 100); // Norm-stregen altid på 160
-    return `
-      <div class="brow">
-        <div class="blbl">${m.label}</div>
-        <div class="btrack">
-          <div class="bfill ${m.timer < 160 ? 'u' : ''}" style="width:${p}%"></div>
-          <div class="bnorm" style="left:${np}%"></div>
-        </div>
-        <div class="bval">${m.timer.toFixed(0)}t</div>
-      </div>`;
-  }).join('');
-
-  // Ring Graf
-  const pct = Math.min(100, (s.total / s.norm_aar * 100));
-  const circ = 2 * Math.PI * 70;
-  document.getElementById('rcircle').style.strokeDasharray = circ;
-  document.getElementById('rcircle').style.strokeDashoffset = circ - (pct/100 * circ);
-  document.getElementById('rpct').textContent = Math.round(pct) + '%';
-
-  // Dag-fordeling (bund)
-  document.getElementById('daydist').innerHTML = data.dag.map(d => `
-    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;">
-      <span style="color:var(--muted)">${d.dag}</span>
-      <span>${d.gns.toFixed(1)}t i snit</span>
-    </div>
-  `).join('');
-
-  renderHeatmap(data.days);
-}
-
-function renderHeatmap(days) {
-  const dmap = {};
-  days.forEach(d => dmap[d.dato] = d.timer);
-  const maxDate = new Date();
-  const minDate = new Date(); minDate.setFullYear(maxDate.getFullYear()-1);
-  
-  let cur = new Date(minDate);
-  while(cur.getDay() !== 1) cur.setDate(cur.getDate()-1);
-  
-  const el = document.getElementById('heatmap'); el.innerHTML = '';
-  const end = new Date(maxDate); end.setDate(end.getDate() + 7);
-  
-  let col = [];
-  while(cur <= end) {
-    const ds = cur.toISOString().slice(0,10);
-    col.push({ h: dmap[ds] || 0 });
-    if(col.length === 7) {
-      const colEl = document.createElement('div'); colEl.className = 'hmcol';
-      col.forEach(day => {
-        const cell = document.createElement('div');
-        cell.className = 'hmcell';
-        if(day.h > 0) {
-          const op = Math.min(1, day.h/8);
-          cell.style.background = `rgba(37, 99, 235, ${op})`;
-        }
-        colEl.appendChild(cell);
-      });
-      el.appendChild(colEl);
-      col = [];
-    }
-    cur.setDate(cur.getDate()+1);
-  }
-}
-</script>
-</body>
-</html>
+    const clean = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae
