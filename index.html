@@ -297,7 +297,22 @@
   <div class="last-updated" id="last-updated"></div>
 </div>
 
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+// Load MSAL from CDN dynamically, then boot the app
+(function() {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js';
+  script.onload = () => window._msalReady = true;
+  script.onerror = () => {
+    // Fallback to Microsoft's own CDN
+    const s2 = document.createElement('script');
+    s2.src = 'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+    s2.onload = () => window._msalReady = true;
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(script);
+})();
+</script>
 <script>
 const STORAGE_KEY = 'arbejdstid_cfg';
 const REDIRECT_URI = 'https://k-stampe.github.io/arbejdstid-dashboard/';
@@ -360,8 +375,19 @@ async function startAuth() {
   }
 }
 
+async function waitForMsal() {
+  for (let i = 0; i < 60; i++) {
+    if (window.msal || window.msalBrowser) return;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw new Error('MSAL-biblioteket kunne ikke indlæses. Tjek din internetforbindelse og prøv igen.');
+}
+
 async function initMsal(clientId) {
-  msalInstance = new msal.PublicClientApplication({
+  await waitForMsal();
+  // v3 exposes window.msalBrowser, v2 exposes window.msal
+  const msalLib = window.msalBrowser || window.msal;
+  msalInstance = new msalLib.PublicClientApplication({
     auth: {
       clientId,
       authority: 'https://login.microsoftonline.com/common',
@@ -370,7 +396,9 @@ async function initMsal(clientId) {
     },
     cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
   });
-  await msalInstance.initialize();
+  if (typeof msalInstance.initialize === 'function') {
+    await msalInstance.initialize();
+  }
 }
 
 async function getToken() {
