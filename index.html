@@ -395,58 +395,93 @@ function loadData() {
   });
 }
 
-// ---- PARSE ----
 function parseData(values) {
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
-  var summary = {
-    total: n(values[0] && values[0][1]),
-    gns_md: n(values[1] && values[1][1]),
-    gns_uge: n(values[2] && values[2][1]),
-    gns_dag: n(values[3] && values[3][1]),
-    normtid: n(values[0] && values[0][2]),
-    overtid: n(values[4] && values[4][3])
-  };
-  var days = [];
-  for (var i = 14; i < values.length; i++) {
-    var row = values[i];
-    if (!row || !row[7] || row[7] === 'Dato(er)') continue;
-    var raw = row[7], timer = parseFloat(row[10]), dag = String(row[11] || '').toLowerCase().trim(), d;
-    if (typeof raw === 'number') { d = new Date((raw - 25569) * 86400000); } else { d = new Date(raw); }
-    if (isNaN(d.getTime())) continue;
-    days.push({ dato: d.toISOString().slice(0,10), timer: isNaN(timer) ? 0 : Math.round(timer*1000)/1000, dag: dag, d: d });
+  
+  // Find rækker baseret på labels i kolonne A (index 0)
+  function findRow(label) {
+    return values.find(row => row[0] && String(row[0]).toLowerCase().includes(label.toLowerCase()));
   }
-  days.sort(function(a,b) { return a.d - b.d; });
+
+  var rowTotal = findRow('Pr. år');
+  var rowMd = findRow('Gns pr. måned');
+  var rowUge = findRow('Gns pr. uge');
+  var rowDag = findRow('Gns pr. dag');
+  var rowFlex = findRow('Overtid total');
+
+  var summary = {
+    total: n(rowTotal && rowTotal[1]),
+    gns_md: n(rowMd && rowMd[1]),
+    gns_uge: n(rowUge && rowUge[1]),
+    gns_dag: n(rowDag && rowDag[1]),
+    normtid: n(rowTotal && rowTotal[2]),
+    // Vi bruger den specifikke flex-saldo (Overtid total) til badgen
+    overtid: n(rowFlex && rowFlex[3]) 
+  };
+
+  var days = [];
+  // Data-listen i dit ark starter efter række 15 (overskrifterne)
+  for (var i = 15; i < values.length; i++) {
+    var row = values[i];
+    // Vi kigger i kolonne H (index 7) for datoen i den højre tabel
+    if (!row || !row[7] || row[7] === 'Dato(er)') continue;
+    
+    var raw = row[7], timer = parseFloat(row[10]), dag = String(row[11] || '').toLowerCase().trim(), d;
+    
+    if (typeof raw === 'number') { 
+        d = new Date((raw - 25569) * 86400000); 
+    } else { 
+        d = new Date(raw); 
+    }
+    
+    if (isNaN(d.getTime())) continue;
+    days.push({ 
+        dato: d.toISOString().slice(0,10), 
+        timer: isNaN(timer) ? 0 : Math.round(timer*1000)/1000, 
+        dag: dag, 
+        d: d 
+    });
+  }
+  
+  // Sortering og opsamling til grafer
+  days.sort((a,b) => a.d - b.d);
 
   var mmap = {};
-  days.filter(function(x){return x.timer>0;}).forEach(function(x) { var k=x.dato.slice(0,7); mmap[k]=(mmap[k]||0)+x.timer; });
-  var monthly = Object.keys(mmap).sort().map(function(k) {
-    return { label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}), timer: Math.round(mmap[k]*100)/100 };
+  days.filter(x => x.timer > 0).forEach(x => { 
+    var k = x.dato.slice(0,7); 
+    mmap[k] = (mmap[k] || 0) + x.timer; 
   });
+  
+  var monthly = Object.keys(mmap).sort().map(k => ({
+    label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}),
+    timer: Math.round(mmap[k]*100)/100
+  }));
 
   var wmap = {};
-  days.filter(function(x){return x.timer>0;}).forEach(function(x) {
-    var mon = new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
+  days.filter(x => x.timer > 0).forEach(x => {
+    var mon = new Date(x.d); 
+    mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
     var wk = mon.toISOString().slice(0,10);
     if (!wmap[wk]) wmap[wk] = { label:'Uge '+isoWeek(x.d), timer:0, start:mon };
     wmap[wk].timer += x.timer;
   });
-  var weekly = Object.values(wmap).sort(function(a,b){return a.start-b.start;}).map(function(w) {
-    return { label:w.label, timer:Math.round(w.timer*100)/100 };
-  });
+
+  var weekly = Object.values(wmap).sort((a,b) => a.start-b.start).map(w => ({
+    label: w.label, timer: Math.round(w.timer*100)/100
+  }));
 
   var dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
-  var dagDK = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag','l\u00f8rdag','s\u00f8ndag'];
   var dagShort = ['Man','Tir','Ons','Tor','Fre','Lor','Son'];
   var dmap = {};
-  days.filter(function(x){return x.timer>0;}).forEach(function(x) {
-    // normalize danish chars
+  days.filter(x => x.timer > 0).forEach(x => {
     var d2 = x.dag.replace(/\u00f8/g,'o').replace(/\u00e6/g,'ae').replace(/\u00e5/g,'aa');
-    if (!dmap[d2]) dmap[d2]={sum:0,count:0};
-    dmap[d2].sum+=x.timer; dmap[d2].count++;
+    if (!dmap[d2]) dmap[d2] = {sum:0,count:0};
+    dmap[d2].sum += x.timer; dmap[d2].count++;
   });
-  var dag = dagFull.map(function(n,i) {
+
+  var dag = dagFull.map((n,i) => {
     var e = dmap[n]; return { dag:dagShort[i], gns: e ? Math.round(e.sum/e.count*100)/100 : 0 };
-  }).filter(function(d){return d.gns>0;});
+  }).filter(d => d.gns > 0);
 
   return { summary:summary, days:days, monthly:monthly, weekly:weekly, dag:dag };
 }
