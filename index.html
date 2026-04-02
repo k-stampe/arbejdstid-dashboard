@@ -435,6 +435,9 @@ function parseData(values) {
     }
     
     if (isNaN(d.getTime())) continue;
+    // Filtrer weekenddage fra (lørdag=6, søndag=0)
+    var dayOfWeek = d.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
     days.push({ 
         dato: d.toISOString().slice(0,10), 
         timer: isNaN(timer) ? 0 : Math.round(timer*1000)/1000, 
@@ -501,9 +504,9 @@ function renderAll(data) {
     document.getElementById('dsub').textContent = fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
   }
   var kpis=[
-    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:(s.overtid>=0?'+':'')+s.overtid.toFixed(1)+'t overtid',over:s.overtid<0},
+    {label:'Fleks saldo',val:(s.overtid>=0?'+':'')+s.overtid.toFixed(1),unit:'timer ift. normtid',badge:s.overtid>=0?'Plustime':'Minustimer',over:s.overtid<0},
+    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:monthly.length+' maaneder',cls:'b'},
     {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',over:s.gns_uge<NORM_UGE},
-    {label:'Snit pr. maaned',val:s.gns_md.toFixed(1),unit:'timer pr. maaned',badge:monthly.length+' maaneder',cls:'b'},
     {label:'Snit pr. dag',val:s.gns_dag.toFixed(2),unit:'timer (norm: '+NORM_DAG+'t)',badge:(s.gns_dag>=NORM_DAG?'+':'')+(s.gns_dag-NORM_DAG).toFixed(2)+'t',over:s.gns_dag<NORM_DAG}
   ];
   document.getElementById('kpis').innerHTML=kpis.map(function(c,i){
@@ -513,7 +516,7 @@ function renderAll(data) {
   var maxM=Math.max.apply(null,monthly.map(function(m){return m.timer;}).concat([NORM_MD+20]));
   document.getElementById('monthbars').innerHTML=monthly.map(function(m){
     var p=(m.timer/maxM*100).toFixed(1), np=(NORM_MD/maxM*100).toFixed(1);
-    return '<div class="brow"><div class="blbl">'+m.label+'</div><div class="btrack"><div class="bfill '+(m.timer<NORM_MD?'u':'')+'" style="width:'+p+'%"><div class="bnorm" style="left:'+np+'%"></div></div></div><div class="bval">'+m.timer.toFixed(1)+'t</div></div>';
+    return '<div class="brow"><div class="blbl">'+m.label+'</div><div class="btrack"><div class="bfill '+(m.timer<NORM_MD?'u':'')+'" style="width:'+p+'%"></div><div class="bnorm" style="left:'+np+'%;position:absolute;top:0;bottom:0;width:2px;background:var(--accent2);opacity:.7"></div></div><div class="bval">'+m.timer.toFixed(1)+'t</div></div>';
   }).join('')+'<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Normtid ('+NORM_MD+'t/md)</div>';
 
   var pct=Math.min(s.total/NORM_AAR,1), R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
