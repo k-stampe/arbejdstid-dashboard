@@ -404,16 +404,13 @@ function parseData(values) {
   var rowTotal = findRow('Pr. år');
   var rowMd = findRow('Gns pr. måned');
   var rowUge = findRow('Gns pr. uge');
-  var rowDag = findRow('Gns pr. dag');
   var rowFlex = findRow('Overtid total');
 
   var summary = {
     total: n(rowTotal && rowTotal[1]),
     gns_md: n(rowMd && rowMd[1]),
     gns_uge: n(rowUge && rowUge[1]),
-    gns_dag: n(rowDag && rowDag[1]),
     normtid: n(rowTotal && rowTotal[2]),
-    // Henter flex-saldoen direkte fra 'Overtid total' rækken
     overtid: n(rowFlex && rowFlex[3]) 
   };
 
@@ -422,45 +419,31 @@ function parseData(values) {
 
   for (var i = 15; i < values.length; i++) {
     var row = values[i];
-    // Vi kigger i kolonne H (index 7) for datoen
     if (!row || !row[7] || row[7] === 'Dato(er)') continue;
     
-    var raw = row[7];
-    // VIGTIGT: Tjek om dine daglige timer står i kolonne K (10) eller L (11). 
-    // Hvis weekenden driller, er det ofte fordi kolonne 10 er den ugentlige sum.
-    var timer = parseFloat(row[10]); 
+    // Tjek om der er indtastet tid (Kolonne I og J / Index 8 og 9)
+    // Hvis de er tomme, ignorerer vi timetallet (fjerner de ugentlige summer på søndage)
+    var harTid = row[8] && row[9] && String(row[8]).trim() !== "";
+    var timer = harTid ? n(row[10]) : 0; 
+    
     var d;
-
-    if (typeof raw === 'number') { 
-      d = new Date((raw - 25569) * 86400000);
+    if (typeof row[7] === 'number') { 
+      d = new Date((row[7] - 25569) * 86400000);
     } else { 
-      d = new Date(raw);
+      d = new Date(row[7]);
     }
     
     if (isNaN(d.getTime())) continue;
 
-    var dagNavn = ugedageNavne[d.getDay()];
-    
-    // Tjek: Vi tæller kun timerne med, hvis det ikke er weekend, 
-    // ELLER hvis du faktisk har skrevet noter/tid ind (for at undgå ugentlige opsummeringer)
-    var erWeekend = (d.getDay() === 0 || d.getDay() === 6);
-    var faktiskeTimer = isNaN(timer) ? 0 : Math.round(timer*1000)/1000;
-
-    // Hvis det er weekend og timetallet virker mistænkeligt højt (som en ugentlig sum), så sæt det til 0
-    if (erWeekend && faktiskeTimer > 0) {
-       // Du kan fjerne denne blok, hvis du rent faktisk arbejder 12+ timer om søndagen
-       if (faktiskeTimer > 10) faktiskeTimer = 0; 
-    }
-
     days.push({ 
       dato: d.toISOString().slice(0,10), 
-      timer: faktiskeTimer, 
-      dag: dagNavn, 
+      timer: timer, 
+      dag: ugedageNavne[d.getDay()], 
       d: d 
     });
   }
 
-  // Sortering og grafer (beholdes som de er)
+  // Gruppering til grafer
   days.sort((a,b) => a.d - b.d);
   var mmap = {};
   days.filter(x => x.timer > 0).forEach(x => { 
@@ -471,8 +454,7 @@ function parseData(values) {
     label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}),
     timer: Math.round(mmap[k]*100)/100
   }));
-  
-  // ... (resten af wmap og dmap beregninger forbliver de samme)
+
   var wmap = {};
   days.filter(x => x.timer > 0).forEach(x => {
     var mon = new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
@@ -484,162 +466,48 @@ function parseData(values) {
     label: w.label, timer: Math.round(w.timer*100)/100
   }));
 
-  var dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
-  var dagShort = ['Man','Tir','Ons','Tor','Fre','Lor','Son'];
-  var dmap = {};
-  days.filter(x => x.timer > 0).forEach(x => {
-    var d2 = x.dag.replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'aa');
-    if (!dmap[d2]) dmap[d2] = {sum:0,count:0};
-    dmap[d2].sum += x.timer; dmap[d2].count++;
-  });
-  var dag = dagFull.map((n,i) => {
-    var dKey = n.replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'aa');
-    var e = dmap[dKey]; return { dag:dagShort[i], gns: e ? Math.round(e.sum/e.count*100)/100 : 0 };
-  }).filter(d => d.gns > 0);
-
-  return { summary:summary, days:days, monthly:monthly, weekly:weekly, dag:dag };
-}
-
-function isoWeek(d) {
-  var dt = new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
-  dt.setUTCDate(dt.getUTCDate()+4-(dt.getUTCDay()||7));
-  var y = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
-  return Math.ceil((((dt-y)/86400000)+1)/7);
+  return { summary:summary, days:days, monthly:monthly, weekly:weekly };
 }
 
 // ---- RENDER ----
 function renderAll(data) {
-  var s=data.summary, days=data.days, monthly=data.monthly, weekly=data.weekly, dag=data.dag;
+  var s = data.summary, days = data.days, monthly = data.monthly, weekly = data.weekly;
   
-  if (days.length>0) {
-    var fmt=function(d){return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});};
-    document.getElementById('dsub').textContent = fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
+  if (days.length > 0) {
+    var fmt = function(d){ return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'}); };
+    document.getElementById('dsub').textContent = fmt(days[0].dato) + ' - ' + fmt(days[days.length-1].dato) + ' - Kristian Nielsen';
   }
 
-  // Nye KPI-kort med dedikeret Fleks Saldo
-  var kpis=[
-    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:'Total periode'},
-    {label:'Fleks Saldo',val:s.overtid.toFixed(1),unit:'timer til gode',badge:(s.overtid>=0?'Overskud':'Underskud'),over:s.overtid<0},
-    {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t',over:s.gns_uge<NORM_UGE},
-    {label:'Snit pr. maaned',val:s.gns_md.toFixed(1),unit:'timer pr. maaned',badge:monthly.length+' maaneder',cls:'b'}
+  // KPI Kort
+  var kpis = [
+    { label: 'Fleks Saldo', val: (s.overtid >= 0 ? '+' : '') + s.overtid.toFixed(1), unit: 'timer totalt', badge: s.overtid >= 0 ? 'Overskud' : 'Underskud', over: s.overtid < 0 },
+    { label: 'Timer i alt', val: s.total.toFixed(1), unit: 'timer registreret', badge: monthly.length + ' mdr', cls: 'b' },
+    { label: 'Snit pr. uge', val: s.gns_uge.toFixed(1), unit: 'timer (norm: ' + NORM_UGE + 't)', badge: (s.gns_uge >= NORM_UGE ? '+' : '') + (s.gns_uge - NORM_UGE).toFixed(1) + 't', over: s.gns_uge < NORM_UGE }
   ];
 
-  document.getElementById('kpis').innerHTML=kpis.map(function(c){
-    return '<div class="card '+(c.cls||'')+'"><div class="clabel">'+c.label+'</div><div class="cval">'+c.val+'</div><div class="cunit">'+c.unit+'</div><div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
+  document.getElementById('kpis').innerHTML = kpis.map(function(c) {
+    return '<div class="card ' + (c.cls || '') + '"><div class="clabel">' + c.label + '</div><div class="cval">' + c.val + '</div><div class="cunit">' + c.unit + '</div><div class="cbadge ' + (c.over ? 'o' : '') + '">' + c.badge + '</div></div>';
   }).join('');
 
-  // Fikser den røde norm-streg ved at flytte den ud af bfill
-  var maxM=Math.max.apply(null,monthly.map(function(m){return m.timer;}).concat([NORM_MD+20]));
-  document.getElementById('monthbars').innerHTML=monthly.map(function(m){
-    var p=(m.timer/maxM*100).toFixed(1), np=(NORM_MD/maxM*100).toFixed(1);
+  // Måneds-bar-chart med fast rød streg
+  var maxM = Math.max.apply(null, monthly.map(function(m){ return m.timer; }).concat([NORM_MD + 20]));
+  document.getElementById('monthbars').innerHTML = monthly.map(function(m) {
+    var p = (m.timer / maxM * 100).toFixed(1);
+    var np = (NORM_MD / maxM * 100).toFixed(1);
     return '<div class="brow">' +
-             '<div class="blbl">'+m.label+'</div>' +
+             '<div class="blbl">' + m.label + '</div>' +
              '<div class="btrack">' +
-               '<div class="bfill '+(m.timer<NORM_MD?'u':'')+'" style="width:'+p+'%"></div>' +
-               '<div class="bnorm" style="left:'+np+'%"></div>' + // Nu som nabo til bfill
+               '<div class="bfill ' + (m.timer < NORM_MD ? 'u' : '') + '" style="width:' + p + '%"></div>' +
+               '<div class="bnorm" style="left:' + np + '%; position:absolute; top:0; bottom:0; width:2px; background:var(--accent2); z-index:2"></div>' +
              '</div>' +
-             '<div class="bval">'+m.timer.toFixed(1)+'t</div>' +
+             '<div class="bval">' + m.timer.toFixed(1) + 't</div>' +
            '</div>';
-  }).join('')+'<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Normtid ('+NORM_MD+'t/md)</div>';
-}
+  }).join('') + '<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Rød streg = Normtid (' + NORM_MD + 't/md)</div>';
 
-  var pct=Math.min(s.total/NORM_AAR,1), R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
-  document.getElementById('ringsvg').innerHTML=
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--surface2)" stroke-width="14"/>'+
-    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--accent)" stroke-width="14" stroke-dasharray="'+dash+' '+circ+'" stroke-dashoffset="'+(circ/4)+'" stroke-linecap="round"/>'+
-    '<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" fill="var(--text)" font-size="22" font-family="Fraunces,serif" font-weight="600">'+(pct*100).toFixed(0)+'%</text>'+
-    '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" fill="var(--muted)" font-size="10">'+s.total.toFixed(0)+'t / '+NORM_AAR+'t</text>'+
-    '<text x="'+cx+'" y="'+(cy+28)+'" text-anchor="middle" fill="var(--accent)" font-size="10">af normaar</text>';
-  document.getElementById('ringlbls').innerHTML=
-    '<div class="rlbl"><div class="rdot" style="background:var(--accent)"></div>Arbejdet: '+s.total.toFixed(1)+'t</div>'+
-    '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: '+(NORM_AAR-s.total).toFixed(1)+'t</div>';
-
-  renderWeekly(weekly);
-
-  var maxD=Math.max.apply(null,dag.map(function(d){return d.gns;}));
-  document.getElementById('daybars').innerHTML=dag.map(function(d){
-    return '<div class="dcol"><div class="dval">'+d.gns+'t</div><div class="dbar '+(d.dag==='Lor'||d.dag==='Son'?'we':'')+'" style="height:'+(d.gns/maxD*80).toFixed(0)+'px"></div><div class="dlbl">'+d.dag+'</div></div>';
-  }).join('');
-
-  var dnames={'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre','lordag':'Lor','sondag':'Son','l\u00f8rdag':'Lor','s\u00f8ndag':'Son'};
-  var recent=days.filter(function(x){return x.timer>0;}).slice(-10).reverse();
-  document.getElementById('recenttbl').innerHTML=
-    '<thead><tr><th>Dato</th><th>Dag</th><th>Timer</th><th>Ift. norm</th></tr></thead><tbody>'+
-    recent.map(function(d){
-      var dt=new Date(d.dato), diff=d.timer-NORM_DAG;
-      var dots=''; for(var i=0;i<13;i++){var f=i<Math.round(d.timer),o=f&&i>=7; dots+='<span class="dot'+(f?' f':'')+(o?' ov':'')+'"></span>';}
-      return '<tr><td style="color:var(--muted)">'+(dt.getDate())+'/'+(dt.getMonth()+1)+'</td><td>'+(dnames[d.dag]||d.dag)+'</td>'+
-        '<td><span class="pill'+(d.timer>9?' h':'')+'">'+d.timer.toFixed(2)+'t</span></td>'+
-        '<td><div style="display:flex;align-items:center;gap:3px">'+dots+
-        '<span style="margin-left:4px;font-size:10px;color:'+(diff>=0?'var(--accent)':'var(--accent2)')+'">'+
-        (diff>=0?'+':'')+diff.toFixed(1)+'t</span></div></td></tr>';
-    }).join('')+'</tbody>';
-
-  renderHeatmap(days);
-}
-
-function renderWeekly(weekly) {
-  var wrap=document.getElementById('wkwrap'), W=wrap.clientWidth||700;
-  var H=160,pL=8,pR=8,pT=18,pB=30,iW=W-pL-pR,iH=H-pT-pB;
-  var vals=weekly.map(function(w){return w.timer;}), maxV=Math.max.apply(null,vals)+3, minV=10;
-  var xS=weekly.length>1?iW/(weekly.length-1):iW;
-  function yS(v){return pT+iH-(v-minV)/(maxV-minV)*iH;}
-  function xP(i){return pL+i*xS;}
-  var normY=yS(NORM_UGE), pts=weekly.map(function(w,i){return xP(i)+','+yS(w.timer);}).join(' ');
-  var ac=xP(weekly.length-1)+','+(pT+iH)+' '+xP(0)+','+(pT+iH);
-  var lp=weekly.map(function(w,i){return (i===0?'M':'L')+xP(i)+','+yS(w.timer);}).join(' ');
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'+
-    '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/><stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/></linearGradient></defs>'+
-    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>'+
-    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.7" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
-    '<polygon points="'+pts+' '+ac+'" fill="url(#ag)"/>'+
-    '<path d="'+lp+'" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>';
-  weekly.forEach(function(w,i){
-    var x=xP(i),y=yS(w.timer),show=(i%2===0||i===weekly.length-1);
-    svg+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+(w.timer>=NORM_UGE?'#7fffb2':'#ff7f6e')+'" stroke="#0f0f13" stroke-width="1.5"><title>'+w.label+': '+w.timer+'t</title></circle>';
-    if(show) svg+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#6b6b80" font-family="DM Mono,monospace">'+w.label+'</text>';
-  });
-  wrap.innerHTML=svg+'</svg>';
-}
-
-function renderHeatmap(days) {
-  if (!days.length) return;
-  var dmap={};
-  days.forEach(function(d){dmap[d.dato]=d.timer;});
-  var minDate=new Date(days[0].d); minDate.setDate(1);
-  var maxDate=new Date(days[days.length-1].d);
-  var maxH=Math.max.apply(null,days.map(function(d){return d.timer;}).concat([1]));
-  var cur=new Date(minDate);
-  while(cur.getDay()!==1) cur.setDate(cur.getDate()-1);
-  var el=document.getElementById('heatmap'); el.innerHTML='';
-  var lblCol=document.createElement('div'); lblCol.className='hmcol';
-  ['M','T','O','T','F','L','S'].forEach(function(l){
-    var d=document.createElement('div');
-    d.style.cssText='width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b6b80';
-    d.textContent=l; lblCol.appendChild(d);
-  });
-  el.appendChild(lblCol);
-  var end=new Date(maxDate); end.setDate(end.getDate()+8);
-  var col=[],cols=[];
-  while(cur<=end){
-    var ds=cur.toISOString().slice(0,10);
-    col.push({ds:ds,h:dmap[ds]||0,inRange:cur>=minDate&&cur<=maxDate});
-    if(col.length===7){cols.push(col);col=[];}
-    cur.setDate(cur.getDate()+1);
-  }
-  if(col.length){while(col.length<7)col.push({ds:'',h:0,inRange:false});cols.push(col);}
-  cols.forEach(function(col){
-    var colEl=document.createElement('div'); colEl.className='hmcol';
-    col.forEach(function(item){
-      var cell=document.createElement('div'); cell.className='hmcell';
-      if(item.inRange&&item.h>0){
-        cell.style.background='color-mix(in srgb, #7fffb2 '+Math.round((item.h/maxH)*90+10)+'%, #22222c)';
-        var dt=new Date(item.ds); cell.title=(dt.getDate())+'/'+(dt.getMonth()+1)+': '+item.h.toFixed(1)+'t';
-      } else if(!item.inRange||!item.ds){ cell.style.opacity='0'; }
-      colEl.appendChild(cell);
-    });
-    el.appendChild(colEl);
-  });
+  // Kald de øvrige render-funktioner
+  if (typeof renderWeekly === 'function') renderWeekly(weekly);
+  if (typeof renderHeatmap === 'function') renderHeatmap(days);
+  if (typeof renderRecent === 'function') renderRecent(days);
 }
 </script>
 </body>
