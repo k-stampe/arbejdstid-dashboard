@@ -395,26 +395,15 @@ function loadData() {
   });
 }
 
-// ---- KONFIGURATION & HJÆLPERE ----
-const NORM_DAG = 7.4;
-const NORM_UGE = 37;
-const NORM_MD = 160.33;
-
-// Sikker dato-formatering (undgår tidszone-fejl i heatmap)
-function fmtDS(d) {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-// Beregner ugenummer (ISO 8601)
-function isoWeek(d) {
-  var dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
-  var y = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
-  return Math.ceil((((dt - y) / 86400000) + 1) / 7);
-}
-
-// ---- DATA PARSING ----
 function parseData(values) {
+  // Hjælpefunktion til at beregne ugenummer
+function isoWeek(d) {
+  var date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  var week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+};
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
   function findRow(label) {
     return values.find(row => row[0] && String(row[0]).toLowerCase().includes(label.toLowerCase()));
@@ -430,7 +419,7 @@ function parseData(values) {
     gns_md: n(rowMd && rowMd[1]),
     gns_uge: n(rowUge && rowUge[1]),
     normtid: n(rowTotal && rowTotal[2]),
-    overtid: n(rowFlex && rowFlex[3])
+    overtid: n(rowFlex && rowFlex[3]) 
   };
 
   var days = [];
@@ -440,19 +429,30 @@ function parseData(values) {
     var row = values[i];
     if (!row || !row[7] || row[7] === 'Dato(er)') continue;
     
-    // Kun tæl timer hvis der er indtastet start/slut tid (fjerner Excel uge-totaler)
+    // Tjek om der er indtastet tid (Kolonne I og J / Index 8 og 9)
+    // Hvis de er tomme, ignorerer vi timetallet (fjerner de ugentlige summer på søndage)
     var harTid = row[8] && row[9] && String(row[8]).trim() !== "";
     var timer = harTid ? n(row[10]) : 0; 
     
-    var d = (typeof row[7] === 'number') ? new Date((row[7] - 25569) * 86400000) : new Date(row[7]);
+    var d;
+    if (typeof row[7] === 'number') { 
+      d = new Date((row[7] - 25569) * 86400000);
+    } else { 
+      d = new Date(row[7]);
+    }
+    
     if (isNaN(d.getTime())) continue;
 
-    days.push({ dato: fmtDS(d), timer: timer, dag: ugedageNavne[d.getDay()], d: d });
+    days.push({ 
+      dato: d.toISOString().slice(0,10), 
+      timer: timer, 
+      dag: ugedageNavne[d.getDay()], 
+      d: d 
+    });
   }
 
+  // Gruppering til grafer
   days.sort((a,b) => a.d - b.d);
-  
-  // Måneds-aggregering
   var mmap = {};
   days.filter(x => x.timer > 0).forEach(x => { 
     var k = x.dato.slice(0,7); 
@@ -463,11 +463,10 @@ function parseData(values) {
     timer: Math.round(mmap[k]*100)/100
   }));
 
-  // Uge-aggregering
   var wmap = {};
   days.filter(x => x.timer > 0).forEach(x => {
     var mon = new Date(x.d); mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
-    var wk = fmtDS(mon);
+    var wk = mon.toISOString().slice(0,10);
     if (!wmap[wk]) wmap[wk] = { label:'Uge '+isoWeek(x.d), timer:0, start:mon };
     wmap[wk].timer += x.timer;
   });
@@ -478,113 +477,46 @@ function parseData(values) {
   return { summary:summary, days:days, monthly:monthly, weekly:weekly };
 }
 
-// ---- RENDER FUNKTIONER ----
+// ---- RENDER ----
 function renderAll(data) {
-  var s = data.summary, days = data.days;
+  var s = data.summary, days = data.days, monthly = data.monthly, weekly = data.weekly;
   
   if (days.length > 0) {
-    var start = new Date(days[0].dato).toLocaleDateString('da-DK',{month:'short',year:'numeric'});
-    var slut = new Date(days[days.length-1].dato).toLocaleDateString('da-DK',{month:'short',year:'numeric'});
-    document.getElementById('dsub').textContent = start + ' - ' + slut + ' - Kristian Nielsen';
+    var fmt = function(d){ return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'}); };
+    document.getElementById('dsub').textContent = fmt(days[0].dato) + ' - ' + fmt(days[days.length-1].dato) + ' - Kristian Nielsen';
   }
 
   // KPI Kort
   var kpis = [
     { label: 'Fleks Saldo', val: (s.overtid >= 0 ? '+' : '') + s.overtid.toFixed(1), unit: 'timer totalt', badge: s.overtid >= 0 ? 'Overskud' : 'Underskud', over: s.overtid < 0 },
-    { label: 'Timer i alt', val: s.total.toFixed(1), unit: 'timer registreret', badge: data.monthly.length + ' mdr' },
+    { label: 'Timer i alt', val: s.total.toFixed(1), unit: 'timer registreret', badge: monthly.length + ' mdr', cls: 'b' },
     { label: 'Snit pr. uge', val: s.gns_uge.toFixed(1), unit: 'timer (norm: ' + NORM_UGE + 't)', badge: (s.gns_uge >= NORM_UGE ? '+' : '') + (s.gns_uge - NORM_UGE).toFixed(1) + 't', over: s.gns_uge < NORM_UGE }
   ];
 
-  document.getElementById('kpis').innerHTML = kpis.map(c => `
-    <div class="card">
-      <div class="clabel">${c.label}</div>
-      <div class="cval">${c.val}</div>
-      <div class="cunit">${c.unit}</div>
-      <div class="cbadge ${c.over ? 'o' : ''}">${c.badge}</div>
-    </div>
-  `).join('');
+  document.getElementById('kpis').innerHTML = kpis.map(function(c) {
+    return '<div class="card ' + (c.cls || '') + '"><div class="clabel">' + c.label + '</div><div class="cval">' + c.val + '</div><div class="cunit">' + c.unit + '</div><div class="cbadge ' + (c.over ? 'o' : '') + '">' + c.badge + '</div></div>';
+  }).join('');
 
-  renderMonthly(data.monthly);
-  renderWeekly(data.weekly);
-  renderHeatmap(data.days);
-  renderRecent(data.days);
-}
-
-function renderMonthly(monthly) {
-  var maxM = Math.max(...monthly.map(m => m.timer).concat([NORM_MD + 20]));
-  document.getElementById('monthbars').innerHTML = monthly.map(m => {
+  // Måneds-bar-chart med fast rød streg
+  var maxM = Math.max.apply(null, monthly.map(function(m){ return m.timer; }).concat([NORM_MD + 20]));
+  document.getElementById('monthbars').innerHTML = monthly.map(function(m) {
     var p = (m.timer / maxM * 100).toFixed(1);
     var np = (NORM_MD / maxM * 100).toFixed(1);
-    return `
-      <div class="brow">
-        <div class="blbl">${m.label}</div>
-        <div class="btrack">
-          <div class="bfill ${m.timer < NORM_MD ? 'u' : ''}" style="width:${p}%"></div>
-          <div class="bnorm" style="left:${np}%"></div>
-        </div>
-        <div class="bval">${m.timer.toFixed(1)}t</div>
-      </div>`;
-  }).join('');
-}
+    return '<div class="brow">' +
+             '<div class="blbl">' + m.label + '</div>' +
+             '<div class="btrack">' +
+               '<div class="bfill ' + (m.timer < NORM_MD ? 'u' : '') + '" style="width:' + p + '%"></div>' +
+               '<div class="bnorm" style="left:' + np + '%; position:absolute; top:0; bottom:0; width:2px; background:var(--accent2); z-index:2"></div>' +
+             '</div>' +
+             '<div class="bval">' + m.timer.toFixed(1) + 't</div>' +
+           '</div>';
+  }).join('') + '<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Rød streg = Normtid (' + NORM_MD + 't/md)</div>';
 
-function renderWeekly(weekly) {
-  if (!document.getElementById('weekbars')) return;
-  var maxW = Math.max(...weekly.map(w => w.timer).concat([NORM_UGE + 10]));
-  document.getElementById('weekbars').innerHTML = weekly.slice(-12).map(w => {
-    var p = (w.timer / maxW * 100).toFixed(1);
-    var np = (NORM_UGE / maxW * 100).toFixed(1);
-    return `
-      <div class="brow">
-        <div class="blbl">${w.label}</div>
-        <div class="btrack">
-          <div class="bfill ${w.timer < NORM_UGE ? 'u' : ''}" style="width:${p}%"></div>
-          <div class="bnorm" style="left:${np}%"></div>
-        </div>
-        <div class="bval">${w.timer.toFixed(1)}t</div>
-      </div>`;
-  }).join('');
+  // Kald de øvrige render-funktioner
+  if (typeof renderWeekly === 'function') renderWeekly(weekly);
+  if (typeof renderHeatmap === 'function') renderHeatmap(days);
+  if (typeof renderRecent === 'function') renderRecent(days);
 }
-
-function renderHeatmap(days) {
-  var dmap = {}; days.forEach(d => dmap[d.dato] = d.timer);
-  var minD = new Date(days[0].d); minD.setDate(1);
-  var maxD = new Date(days[days.length-1].d);
-  var cur = new Date(minD);
-  while(cur.getDay() !== 1) cur.setDate(cur.getDate() - 1); // Gå til mandag
-  
-  var html = '<div class="hmcol">' + ['M','T','O','T','F','L','S'].map(l => `<div style="height:14px;font-size:9px;color:var(--muted)">${l}</div>`).join('') + '</div>';
-  
-  var col = [];
-  while(cur <= maxD || col.length > 0) {
-    var ds = fmtDS(cur);
-    var h = dmap[ds] || 0;
-    var op = h > 0 ? Math.min(0.2 + (h/10), 1) : 0.05;
-    var bg = h > 8 ? 'var(--accent2)' : 'var(--accent)';
-    col.push(`<div class="hmcell" title="${ds}: ${h}t" style="background:${h > 0 ? bg : 'var(--surface2)'}; opacity:${op}"></div>`);
-    
-    if (col.length === 7) {
-      html += `<div class="hmcol">${col.join('')}</div>`;
-      col = [];
-    }
-    cur.setDate(cur.getDate() + 1);
-    if (cur > maxD && col.length === 0) break;
-  }
-  document.getElementById('heatmap').innerHTML = html;
-}
-
-function renderRecent(days) {
-  var dnames = { 'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre','lordag':'Lør','sondag':'Søn' };
-  var recent = days.filter(x => x.timer > 0).slice(-8).reverse();
-  document.getElementById('recenttbl').innerHTML = recent.map(d => `
-    <tr>
-      <td>${d.dato.split('-').slice(1).reverse().join('/')}</td>
-      <td>${dnames[d.dag] || d.dag}</td>
-      <td>${d.timer.toFixed(1)}t</td>
-      <td><span class="cbadge ${d.timer < NORM_DAG ? 'o' : ''}">${(d.timer - NORM_DAG).toFixed(1)}t</span></td>
-    </tr>
-  `).join('');
-}
-  </script>
-<script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
+</script>
 </body>
 </html>
