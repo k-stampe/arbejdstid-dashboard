@@ -53,7 +53,7 @@ input[type=text]::placeholder { color: var(--muted); }
 .smBtn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 12px; cursor: pointer; transition: color .2s, border-color .2s; }
 .smBtn:hover { color: var(--text); border-color: var(--accent3); }
 
-.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+.grid4 { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; margin-bottom: 24px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
 .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: .4; }
 .card.b::before { background: var(--accent3); }
@@ -106,6 +106,7 @@ input[type=text]::placeholder { color: var(--muted); }
 .hmcell:hover { transform: scale(1.4); z-index: 10; }
 .lastupdated { font-size: 10px; color: var(--muted); text-align: right; margin-top: 16px; }
 
+@media(max-width:1100px){ .grid4{grid-template-columns:repeat(3,1fr)} }
 @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr)} .row2,.row3{grid-template-columns:1fr} }
 @media(max-width:500px){ .grid4{grid-template-columns:1fr 1fr} .box{padding:24px 18px} }
 </style>
@@ -174,24 +175,26 @@ input[type=text]::placeholder { color: var(--muted); }
       </div>
     </div>
   </div>
-  <div class="cc" style="margin-bottom:24px"><div class="ct">Timer pr. uge</div><div id="wkwrap"></div></div>
-  <div class="row3">
-    <div class="cc"><div class="ct">Gennemsnit pr. ugedag</div><div class="daybars" id="daybars"></div></div>
+  <div class="row3" style="margin-bottom:24px">
+    <div class="cc"><div class="ct">Timer pr. uge (seneste 6 uger)</div><div id="wkwrap"></div></div>
     <div class="cc"><div class="ct">Seneste arbejdsdage</div><table class="dtbl" id="recenttbl"></table></div>
   </div>
-  <div class="cc">
-    <div class="ct">Aktivitetskort</div>
-    <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
-    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-      <span style="font-size:10px;color:var(--muted)">Ingen</span>
-      <div style="display:flex;gap:3px">
-        <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 25%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 55%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 80%,#22222c)"></div>
-        <div style="width:14px;height:14px;border-radius:3px;background:#7fffb2"></div>
+  <div class="row3">
+    <div class="cc"><div class="ct">Gennemsnit pr. ugedag</div><div class="daybars" id="daybars"></div></div>
+    <div class="cc">
+      <div class="ct">Aktivitetskort</div>
+      <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <span style="font-size:10px;color:var(--muted)">Ingen</span>
+        <div style="display:flex;gap:3px">
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 25%,#22222c)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 55%,#22222c)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 80%,#22222c)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:#7fffb2"></div>
+        </div>
+        <span style="font-size:10px;color:var(--muted)">Mange timer</span>
       </div>
-      <span style="font-size:10px;color:var(--muted)">Mange timer</span>
     </div>
   </div>
   <div class="lastupdated" id="lastupdated"></div>
@@ -414,10 +417,13 @@ function parseData(values) {
   var rowUge   = findRow('Gns pr. uge');
   var rowFlex  = findRow('Overtid total');
 
+  var rowDag   = findRow('Gns pr. dag');
+
   var summary = {
     total:    n(rowTotal && rowTotal[1]),
     gns_md:   n(rowMd    && rowMd[1]),
     gns_uge:  n(rowUge   && rowUge[1]),
+    gns_dag:  n(rowDag   && rowDag[1]),
     normtid:  n(rowTotal && rowTotal[2]),
     overtid:  n(rowFlex  && rowFlex[3])
   };
@@ -471,7 +477,7 @@ function parseData(values) {
   });
   var weekly = Object.values(wmap).sort(function(a,b){ return a.start-b.start; }).map(function(w) {
     return { label: w.label, timer: Math.round(w.timer*100)/100 };
-  });
+  }).slice(-6);
 
   return { summary:summary, days:days, monthly:monthly, weekly:weekly };
 }
@@ -485,11 +491,13 @@ function renderAll(data) {
     document.getElementById('dsub').textContent = fmt(days[0].dato) + ' - ' + fmt(days[days.length-1].dato) + ' - Kristian Nielsen';
   }
 
-  // KPI Kort
+  // KPI Kort — rækkefølge: total, gns/md, gns/uge, gns/dag, fleks
   var kpis = [
-    { label: 'Fleks Saldo', val: (s.overtid >= 0 ? '+' : '') + s.overtid.toFixed(1), unit: 'timer totalt', badge: s.overtid >= 0 ? 'Overskud' : 'Underskud', over: s.overtid < 0 },
-    { label: 'Timer i alt', val: s.total.toFixed(1), unit: 'timer registreret', badge: monthly.length + ' mdr', cls: 'b' },
-    { label: 'Snit pr. uge', val: s.gns_uge.toFixed(1), unit: 'timer (norm: ' + NORM_UGE + 't)', badge: (s.gns_uge >= NORM_UGE ? '+' : '') + (s.gns_uge - NORM_UGE).toFixed(1) + 't', over: s.gns_uge < NORM_UGE }
+    { label: 'Timer i alt',       val: s.total.toFixed(1),   unit: 'timer registreret',          badge: monthly.length + ' mdr',                                                                           cls: 'b' },
+    { label: 'Snit pr. maaned',   val: s.gns_md.toFixed(1),  unit: 'timer (norm: ' + NORM_MD + 't)',  badge: (s.gns_md  >= NORM_MD  ? '+' : '') + (s.gns_md  - NORM_MD ).toFixed(1) + 't', over: s.gns_md  < NORM_MD  },
+    { label: 'Snit pr. uge',      val: s.gns_uge.toFixed(1), unit: 'timer (norm: ' + NORM_UGE + 't)', badge: (s.gns_uge >= NORM_UGE ? '+' : '') + (s.gns_uge - NORM_UGE).toFixed(1) + 't', over: s.gns_uge < NORM_UGE },
+    { label: 'Snit pr. dag',      val: s.gns_dag.toFixed(1), unit: 'timer (norm: ' + NORM_DAG + 't)', badge: (s.gns_dag >= NORM_DAG ? '+' : '') + (s.gns_dag - NORM_DAG).toFixed(1) + 't', over: s.gns_dag < NORM_DAG },
+    { label: 'Fleks Saldo',       val: (s.overtid >= 0 ? '+' : '') + s.overtid.toFixed(1), unit: 'timer totalt', badge: s.overtid >= 0 ? 'Overskud' : 'Underskud', over: s.overtid < 0 }
   ];
 
   document.getElementById('kpis').innerHTML = kpis.map(function(c) {
