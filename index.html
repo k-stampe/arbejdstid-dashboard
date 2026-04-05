@@ -53,7 +53,7 @@ input[type=text]::placeholder { color: var(--muted); }
 .smBtn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 12px; cursor: pointer; transition: color .2s, border-color .2s; }
 .smBtn:hover { color: var(--text); border-color: var(--accent3); }
 
-.grid4 { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; margin-bottom: 24px; }
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; position: relative; overflow: hidden; }
 .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); opacity: .4; }
 .card.b::before { background: var(--accent3); }
@@ -106,7 +106,6 @@ input[type=text]::placeholder { color: var(--muted); }
 .hmcell:hover { transform: scale(1.4); z-index: 10; }
 .lastupdated { font-size: 10px; color: var(--muted); text-align: right; margin-top: 16px; }
 
-@media(max-width:1100px){ .grid4{grid-template-columns:repeat(3,1fr)} }
 @media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr)} .row2,.row3{grid-template-columns:1fr} }
 @media(max-width:500px){ .grid4{grid-template-columns:1fr 1fr} .box{padding:24px 18px} }
 </style>
@@ -175,26 +174,24 @@ input[type=text]::placeholder { color: var(--muted); }
       </div>
     </div>
   </div>
-  <div class="row3" style="margin-bottom:24px">
-    <div class="cc"><div class="ct">Timer pr. uge (seneste 6 uger)</div><div id="wkwrap"></div></div>
-    <div class="cc"><div class="ct">Seneste arbejdsdage</div><table class="dtbl" id="recenttbl"></table></div>
-  </div>
+  <div class="cc" style="margin-bottom:24px"><div class="ct">Timer pr. uge</div><div id="wkwrap"></div></div>
   <div class="row3">
     <div class="cc"><div class="ct">Gennemsnit pr. ugedag</div><div class="daybars" id="daybars"></div></div>
-    <div class="cc">
-      <div class="ct">Aktivitetskort</div>
-      <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
-      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-        <span style="font-size:10px;color:var(--muted)">Ingen</span>
-        <div style="display:flex;gap:3px">
-          <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
-          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 25%,#22222c)"></div>
-          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 55%,#22222c)"></div>
-          <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 80%,#22222c)"></div>
-          <div style="width:14px;height:14px;border-radius:3px;background:#7fffb2"></div>
-        </div>
-        <span style="font-size:10px;color:var(--muted)">Mange timer</span>
+    <div class="cc"><div class="ct">Seneste arbejdsdage</div><table class="dtbl" id="recenttbl"></table></div>
+  </div>
+  <div class="cc">
+    <div class="ct">Aktivitetskort</div>
+    <div class="hmwrap"><div class="hmgrid" id="heatmap"></div></div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+      <span style="font-size:10px;color:var(--muted)">Ingen</span>
+      <div style="display:flex;gap:3px">
+        <div style="width:14px;height:14px;border-radius:3px;background:var(--surface2)"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 25%,#22222c)"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 55%,#22222c)"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:color-mix(in srgb,#7fffb2 80%,#22222c)"></div>
+        <div style="width:14px;height:14px;border-radius:3px;background:#7fffb2"></div>
       </div>
+      <span style="font-size:10px;color:var(--muted)">Mange timer</span>
     </div>
   </div>
   <div class="lastupdated" id="lastupdated"></div>
@@ -216,6 +213,8 @@ input[type=text]::placeholder { color: var(--muted); }
 
 <script>
 var CFG_KEY = 'atid_cfg3';
+var DEFAULT_CLIENT_ID = '26c6066c-01e0-40e3-ac0e-814625d36be8';
+var DEFAULT_FILE_PATH = '/Arbejdstidsskema.xlsx';
 var REDIRECT = 'https://k-stampe.github.io/arbejdstid-dashboard/';
 var NORM_UGE = 37, NORM_DAG = 7.4, NORM_MD = 160, NORM_AAR = 1920;
 var msalApp = null;
@@ -269,10 +268,15 @@ function buildMsal(lib, clientId) {
 // On page load
 window.addEventListener('load', function() {
   var saved = localStorage.getItem(CFG_KEY);
-  if (!saved) return;
-  cfg = JSON.parse(saved);
-  document.getElementById('inp-cid').value = cfg.clientId || '';
-  document.getElementById('inp-path').value = cfg.filePath || '';
+  if (saved) {
+    cfg = JSON.parse(saved);
+  } else {
+    // Brug hardkodede standardvaerdier
+    cfg = { clientId: DEFAULT_CLIENT_ID, filePath: DEFAULT_FILE_PATH };
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  }
+  document.getElementById('inp-cid').value = cfg.clientId || DEFAULT_CLIENT_ID;
+  document.getElementById('inp-path').value = cfg.filePath || DEFAULT_FILE_PATH;
 
   waitMsal(function(err, lib) {
     if (err) { showSetup(); showErr(err.message); return; }
@@ -293,10 +297,8 @@ window.addEventListener('load', function() {
 
 function doLogin() {
   hideErr();
-  var clientId = document.getElementById('inp-cid').value.trim();
-  var filePath = document.getElementById('inp-path').value.trim();
-  if (!clientId) { showErr('Indtast dit Azure Client ID.'); return; }
-  if (!filePath) { showErr('Indtast stien til din Excel-fil, fx /Arbejdstidsskema.xlsx'); return; }
+  var clientId = (document.getElementById('inp-cid').value.trim()) || DEFAULT_CLIENT_ID;
+  var filePath = (document.getElementById('inp-path').value.trim()) || DEFAULT_FILE_PATH;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) {
     showErr('Client ID ser forkert ud.\nDet skal vaere et UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'); return;
   }
@@ -399,262 +401,226 @@ function loadData() {
 }
 
 function parseData(values) {
-  function isoWeek(d) {
-    var date = new Date(d.getTime());
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-    var week1 = new Date(date.getFullYear(), 0, 4);
-    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-  }
   function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
+  
+  // Find rækker baseret på labels i kolonne A (index 0)
   function findRow(label) {
-    return values.find(function(row) { return row[0] && String(row[0]).toLowerCase().includes(label.toLowerCase()); });
+    return values.find(row => row[0] && String(row[0]).toLowerCase().includes(label.toLowerCase()));
   }
 
-  // "Arbejdstid total"-arket: kolonne 0=label, 1=arbejdstimer, 2=normtid, 3=overtid
   var rowTotal = findRow('Pr. år');
-  var rowMd    = findRow('Gns pr. måned');
-  var rowUge   = findRow('Gns pr. uge');
-  var rowFlex  = findRow('Overtid total');
-
-  var rowDag   = findRow('Gns pr. dag');
+  var rowMd = findRow('Gns pr. måned');
+  var rowUge = findRow('Gns pr. uge');
+  var rowDag = findRow('Gns pr. dag');
+  var rowFlex = findRow('Overtid total');
 
   var summary = {
-    total:    n(rowTotal && rowTotal[1]),
-    gns_md:   n(rowMd    && rowMd[1]),
-    gns_uge:  n(rowUge   && rowUge[1]),
-    gns_dag:  n(rowDag   && rowDag[1]),
-    normtid:  n(rowTotal && rowTotal[2]),
-    overtid:  n(rowFlex  && rowFlex[3])
+    total: n(rowTotal && rowTotal[1]),
+    gns_md: n(rowMd && rowMd[1]),
+    gns_uge: n(rowUge && rowUge[1]),
+    gns_dag: n(rowDag && rowDag[1]),
+    normtid: n(rowTotal && rowTotal[2]),
+    // Vi bruger den specifikke flex-saldo (Overtid total) til badgen
+    overtid: n(rowFlex && rowFlex[3]) 
   };
 
-  // Dagdata i "Arbejdstid total"-arket: kolonne H-L = index 7-11
-  // 7=dato, 8=fra kl., 9=til kl., 10=arbejdstimer, 11=navn på dag
   var days = [];
-  var ugedageNavne = ['sondag','mandag','tirsdag','onsdag','torsdag','fredag','lordag'];
-
+  // Data-listen i dit ark starter efter række 15 (overskrifterne)
   for (var i = 15; i < values.length; i++) {
     var row = values[i];
-    if (!row || !row[7]) continue;
-    if (String(row[7]).toLowerCase().includes('dato')) continue;
-
-    var rawDate = row[7];
-    var d;
-    if (typeof rawDate === 'number') {
-      d = new Date((rawDate - 25569) * 86400000);
-    } else {
-      d = new Date(rawDate);
+    // Vi kigger i kolonne H (index 7) for datoen i den højre tabel
+    if (!row || !row[7] || row[7] === 'Dato(er)') continue;
+    
+    var raw = row[7], timer = parseFloat(row[10]), dag = String(row[11] || '').toLowerCase().trim(), d;
+    
+    if (typeof raw === 'number') { 
+        d = new Date((raw - 25569) * 86400000); 
+    } else { 
+        d = new Date(raw); 
     }
+    
     if (isNaN(d.getTime())) continue;
-
-    var fra = row[8], til = row[9];
-    var harTid = fra !== null && fra !== undefined && fra !== '' &&
-                 til !== null && til !== undefined && til !== '';
-    var timer = harTid ? n(row[10]) : 0;
-    var dagNavn = row[11] ? String(row[11]).toLowerCase() : ugedageNavne[d.getDay()];
-
-    days.push({ dato: d.toISOString().slice(0,10), timer: timer, dag: dagNavn, fra: fra, til: til, d: d });
+    // Filtrer weekenddage fra (lørdag=6, søndag=0)
+    var dayOfWeek = d.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+    days.push({ 
+        dato: d.toISOString().slice(0,10), 
+        timer: isNaN(timer) ? 0 : Math.round(timer*1000)/1000, 
+        dag: dag, 
+        d: d 
+    });
   }
-
-  days.sort(function(a,b){ return a.d - b.d; });
+  
+  // Sortering og opsamling til grafer
+  days.sort((a,b) => a.d - b.d);
 
   var mmap = {};
-  days.filter(function(x){ return x.timer > 0; }).forEach(function(x) {
-    var k = x.dato.slice(0,7);
-    mmap[k] = (mmap[k] || 0) + x.timer;
+  days.filter(x => x.timer > 0).forEach(x => { 
+    var k = x.dato.slice(0,7); 
+    mmap[k] = (mmap[k] || 0) + x.timer; 
   });
-  var monthly = Object.keys(mmap).sort().map(function(k) {
-    return { label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}), timer: Math.round(mmap[k]*100)/100, key: k };
-  });
+  
+  var monthly = Object.keys(mmap).sort().map(k => ({
+    label: new Date(k+'-01').toLocaleDateString('da-DK',{month:'short',year:'numeric'}),
+    timer: Math.round(mmap[k]*100)/100
+  }));
 
   var wmap = {};
-  days.filter(function(x){ return x.timer > 0; }).forEach(function(x) {
-    var mon = new Date(x.d);
-    mon.setDate(x.d.getDate() - ((x.d.getDay()+6)%7));
+  days.filter(x => x.timer > 0).forEach(x => {
+    var mon = new Date(x.d); 
+    mon.setDate(x.d.getDate()-((x.d.getDay()+6)%7));
     var wk = mon.toISOString().slice(0,10);
     if (!wmap[wk]) wmap[wk] = { label:'Uge '+isoWeek(x.d), timer:0, start:mon };
     wmap[wk].timer += x.timer;
   });
-  var weekly = Object.values(wmap).sort(function(a,b){ return a.start-b.start; }).map(function(w) {
-    return { label: w.label, timer: Math.round(w.timer*100)/100 };
-  }).slice(-6);
 
-  return { summary:summary, days:days, monthly:monthly, weekly:weekly };
+  var weekly = Object.values(wmap).sort((a,b) => a.start-b.start).map(w => ({
+    label: w.label, timer: Math.round(w.timer*100)/100
+  }));
+
+  var dagFull = ['mandag','tirsdag','onsdag','torsdag','fredag','lordag','sondag'];
+  var dagShort = ['Man','Tir','Ons','Tor','Fre','Lor','Son'];
+  var dmap = {};
+  days.filter(x => x.timer > 0).forEach(x => {
+    var d2 = x.dag.replace(/\u00f8/g,'o').replace(/\u00e6/g,'ae').replace(/\u00e5/g,'aa');
+    if (!dmap[d2]) dmap[d2] = {sum:0,count:0};
+    dmap[d2].sum += x.timer; dmap[d2].count++;
+  });
+
+  var dag = dagFull.map((n,i) => {
+    var e = dmap[n]; return { dag:dagShort[i], gns: e ? Math.round(e.sum/e.count*100)/100 : 0 };
+  }).filter(d => d.gns > 0);
+
+  return { summary:summary, days:days, monthly:monthly, weekly:weekly, dag:dag };
+}
+
+function isoWeek(d) {
+  var dt = new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  dt.setUTCDate(dt.getUTCDate()+4-(dt.getUTCDay()||7));
+  var y = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  return Math.ceil((((dt-y)/86400000)+1)/7);
 }
 
 // ---- RENDER ----
 function renderAll(data) {
-  var s = data.summary, days = data.days, monthly = data.monthly, weekly = data.weekly;
-  
-  if (days.length > 0) {
-    var fmt = function(d){ return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'}); };
-    document.getElementById('dsub').textContent = fmt(days[0].dato) + ' - ' + fmt(days[days.length-1].dato) + ' - Kristian Nielsen';
+  var s=data.summary, days=data.days, monthly=data.monthly, weekly=data.weekly, dag=data.dag;
+  if (days.length>0) {
+    var fmt=function(d){return new Date(d).toLocaleDateString('da-DK',{month:'short',year:'numeric'});};
+    document.getElementById('dsub').textContent = fmt(days[0].dato)+' - '+fmt(days[days.length-1].dato)+' - Kristian Nielsen';
   }
-
-  // KPI Kort — rækkefølge: total, gns/md, gns/uge, gns/dag, fleks
-  var kpis = [
-    { label: 'Timer i alt',       val: s.total.toFixed(1),   unit: 'timer registreret',          badge: monthly.length + ' mdr',                                                                           cls: 'b' },
-    { label: 'Snit pr. maaned',   val: s.gns_md.toFixed(1),  unit: 'timer (norm: ' + NORM_MD + 't)',  badge: (s.gns_md  >= NORM_MD  ? '+' : '') + (s.gns_md  - NORM_MD ).toFixed(1) + 't', over: s.gns_md  < NORM_MD  },
-    { label: 'Snit pr. uge',      val: s.gns_uge.toFixed(1), unit: 'timer (norm: ' + NORM_UGE + 't)', badge: (s.gns_uge >= NORM_UGE ? '+' : '') + (s.gns_uge - NORM_UGE).toFixed(1) + 't', over: s.gns_uge < NORM_UGE },
-    { label: 'Snit pr. dag',      val: s.gns_dag.toFixed(1), unit: 'timer (norm: ' + NORM_DAG + 't)', badge: (s.gns_dag >= NORM_DAG ? '+' : '') + (s.gns_dag - NORM_DAG).toFixed(1) + 't', over: s.gns_dag < NORM_DAG },
-    { label: 'Fleks Saldo',       val: (s.overtid >= 0 ? '+' : '') + s.overtid.toFixed(1), unit: 'timer totalt', badge: s.overtid >= 0 ? 'Overskud' : 'Underskud', over: s.overtid < 0 }
+  var kpis=[
+    {label:'Fleks saldo',val:(s.overtid>=0?'+':'')+s.overtid.toFixed(1),unit:'timer ift. normtid',badge:s.overtid>=0?'Plustime':'Minustimer',over:s.overtid<0},
+    {label:'Timer i alt',val:s.total.toFixed(1),unit:'timer registreret',badge:monthly.length+' maaneder',cls:'b'},
+    {label:'Snit pr. uge',val:s.gns_uge.toFixed(1),unit:'timer (norm: '+NORM_UGE+'t)',badge:(s.gns_uge>=NORM_UGE?'+':'')+(s.gns_uge-NORM_UGE).toFixed(1)+'t ift. norm',over:s.gns_uge<NORM_UGE},
+    {label:'Snit pr. dag',val:s.gns_dag.toFixed(2),unit:'timer (norm: '+NORM_DAG+'t)',badge:(s.gns_dag>=NORM_DAG?'+':'')+(s.gns_dag-NORM_DAG).toFixed(2)+'t',over:s.gns_dag<NORM_DAG}
   ];
-
-  document.getElementById('kpis').innerHTML = kpis.map(function(c) {
-    return '<div class="card ' + (c.cls || '') + '"><div class="clabel">' + c.label + '</div><div class="cval">' + c.val + '</div><div class="cunit">' + c.unit + '</div><div class="cbadge ' + (c.over ? 'o' : '') + '">' + c.badge + '</div></div>';
+  document.getElementById('kpis').innerHTML=kpis.map(function(c,i){
+    return '<div class="card '+(c.cls||'')+'"><div class="clabel">'+c.label+'</div><div class="cval">'+c.val+'</div><div class="cunit">'+c.unit+'</div><div class="cbadge '+(c.over?'o':'')+'">'+c.badge+'</div></div>';
   }).join('');
 
-  // Måneds-bar-chart med fast rød streg
-  var maxM = Math.max.apply(null, monthly.map(function(m){ return m.timer; }).concat([NORM_MD + 20]));
-  document.getElementById('monthbars').innerHTML = monthly.map(function(m) {
-    var p = (m.timer / maxM * 100).toFixed(1);
-    var np = (NORM_MD / maxM * 100).toFixed(1);
-    return '<div class="brow">' +
-             '<div class="blbl">' + m.label + '</div>' +
-             '<div class="btrack">' +
-               '<div class="bfill ' + (m.timer < NORM_MD ? 'u' : '') + '" style="width:' + p + '%"></div>' +
-               '<div class="bnorm" style="left:' + np + '%; position:absolute; top:0; bottom:0; width:2px; background:var(--accent2); z-index:2"></div>' +
-             '</div>' +
-             '<div class="bval">' + m.timer.toFixed(1) + 't</div>' +
-           '</div>';
-  }).join('') + '<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Rød streg = Normtid (' + NORM_MD + 't/md)</div>';
+  var maxM=Math.max.apply(null,monthly.map(function(m){return m.timer;}).concat([NORM_MD+20]));
+  document.getElementById('monthbars').innerHTML=monthly.map(function(m){
+    var p=(m.timer/maxM*100).toFixed(1), np=(NORM_MD/maxM*100).toFixed(1);
+    return '<div class="brow"><div class="blbl">'+m.label+'</div><div class="btrack"><div class="bfill '+(m.timer<NORM_MD?'u':'')+'" style="width:'+p+'%"></div><div class="bnorm" style="left:'+np+'%;position:absolute;top:0;bottom:0;width:2px;background:var(--accent2);opacity:.7"></div></div><div class="bval">'+m.timer.toFixed(1)+'t</div></div>';
+  }).join('')+'<div style="margin-top:10px;font-size:10px;color:var(--muted)"><span style="display:inline-block;width:8px;height:8px;background:var(--accent2);border-radius:2px;margin-right:4px"></span>Normtid ('+NORM_MD+'t/md)</div>';
 
-  // Årsopgørelse donut
-  renderRing(s);
-  // Timer pr. uge
+  var pct=Math.min(s.total/NORM_AAR,1), R=72,cx=90,cy=90,circ=2*Math.PI*R,dash=pct*circ;
+  document.getElementById('ringsvg').innerHTML=
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--surface2)" stroke-width="14"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="var(--accent)" stroke-width="14" stroke-dasharray="'+dash+' '+circ+'" stroke-dashoffset="'+(circ/4)+'" stroke-linecap="round"/>'+
+    '<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" fill="var(--text)" font-size="22" font-family="Fraunces,serif" font-weight="600">'+(pct*100).toFixed(0)+'%</text>'+
+    '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" fill="var(--muted)" font-size="10">'+s.total.toFixed(0)+'t / '+NORM_AAR+'t</text>'+
+    '<text x="'+cx+'" y="'+(cy+28)+'" text-anchor="middle" fill="var(--accent)" font-size="10">af normaar</text>';
+  document.getElementById('ringlbls').innerHTML=
+    '<div class="rlbl"><div class="rdot" style="background:var(--accent)"></div>Arbejdet: '+s.total.toFixed(1)+'t</div>'+
+    '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Rest: '+(NORM_AAR-s.total).toFixed(1)+'t</div>';
+
   renderWeekly(weekly);
-  // Gennemsnit pr. ugedag
-  renderDayBars(days);
-  // Seneste arbejdsdage
-  renderRecent(days);
-  // Heatmap
+
+  var maxD=Math.max.apply(null,dag.map(function(d){return d.gns;}));
+  document.getElementById('daybars').innerHTML=dag.map(function(d){
+    return '<div class="dcol"><div class="dval">'+d.gns+'t</div><div class="dbar '+(d.dag==='Lor'||d.dag==='Son'?'we':'')+'" style="height:'+(d.gns/maxD*80).toFixed(0)+'px"></div><div class="dlbl">'+d.dag+'</div></div>';
+  }).join('');
+
+  var dnames={'mandag':'Man','tirsdag':'Tir','onsdag':'Ons','torsdag':'Tor','fredag':'Fre','lordag':'Lor','sondag':'Son','l\u00f8rdag':'Lor','s\u00f8ndag':'Son'};
+  var recent=days.filter(function(x){return x.timer>0;}).slice(-10).reverse();
+  document.getElementById('recenttbl').innerHTML=
+    '<thead><tr><th>Dato</th><th>Dag</th><th>Timer</th><th>Ift. norm</th></tr></thead><tbody>'+
+    recent.map(function(d){
+      var dt=new Date(d.dato), diff=d.timer-NORM_DAG;
+      var dots=''; for(var i=0;i<13;i++){var f=i<Math.round(d.timer),o=f&&i>=7; dots+='<span class="dot'+(f?' f':'')+(o?' ov':'')+'"></span>';}
+      return '<tr><td style="color:var(--muted)">'+(dt.getDate())+'/'+(dt.getMonth()+1)+'</td><td>'+(dnames[d.dag]||d.dag)+'</td>'+
+        '<td><span class="pill'+(d.timer>9?' h':'')+'">'+d.timer.toFixed(2)+'t</span></td>'+
+        '<td><div style="display:flex;align-items:center;gap:3px">'+dots+
+        '<span style="margin-left:4px;font-size:10px;color:'+(diff>=0?'var(--accent)':'var(--accent2)')+'">'+
+        (diff>=0?'+':'')+diff.toFixed(1)+'t</span></div></td></tr>';
+    }).join('')+'</tbody>';
+
   renderHeatmap(days);
 }
 
-function renderRing(s) {
-  var worked = Math.min(s.total, NORM_AAR);
-  var over   = Math.max(0, s.total - NORM_AAR);
-  var remain = Math.max(0, NORM_AAR - s.total);
-  var total  = worked + over + remain;
-  var cx = 90, cy = 90, r = 70, stroke = 18;
-  var circ = 2 * Math.PI * r;
-  function seg(val, offset, color) {
-    var dash = (val / total) * circ;
-    var gap  = circ - dash;
-    return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-dasharray="'+dash.toFixed(2)+' '+gap.toFixed(2)+'" stroke-dashoffset="'+(-offset * circ / total).toFixed(2)+'" style="transform:rotate(-90deg);transform-origin:90px 90px"/>';
-  }
-  var pct = total > 0 ? Math.round(s.total / NORM_AAR * 100) : 0;
-  var svg = seg(worked, 0, 'var(--accent3)') +
-            seg(over, worked, 'var(--accent)') +
-            seg(remain, worked + over, 'var(--surface2)') +
-            '<text x="90" y="85" text-anchor="middle" font-family="Fraunces,serif" font-size="22" fill="var(--text)">'+pct+'%</text>' +
-            '<text x="90" y="103" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="var(--muted)">af '+NORM_AAR+'t</text>';
-  document.getElementById('ringsvg').innerHTML = svg;
-  document.getElementById('ringlbls').innerHTML =
-    '<div class="rlbl"><div class="rdot" style="background:var(--accent3)"></div>Normtid ('+Math.round(worked)+'t)</div>' +
-    (over > 0 ? '<div class="rlbl"><div class="rdot" style="background:var(--accent)"></div>Overarbejde ('+Math.round(over)+'t)</div>' : '') +
-    (remain > 0 ? '<div class="rlbl"><div class="rdot" style="background:var(--surface2);border:1px solid var(--border)"></div>Resterende ('+Math.round(remain)+'t)</div>' : '');
-}
-
 function renderWeekly(weekly) {
-  var wrap = document.getElementById('wkwrap');
-  if (!weekly || weekly.length === 0) { wrap.innerHTML = '<p style="color:var(--muted);font-size:11px">Ingen data</p>'; return; }
-  var maxW = Math.max.apply(null, weekly.map(function(w){ return w.timer; }).concat([NORM_UGE + 5]));
-  var html = '<div style="display:flex;flex-direction:column;gap:5px">';
-  weekly.forEach(function(w) {
-    var p  = (w.timer / maxW * 100).toFixed(1);
-    var np = (NORM_UGE / maxW * 100).toFixed(1);
-    var under = w.timer < NORM_UGE;
-    html += '<div class="brow">' +
-              '<div class="blbl" style="width:48px">' + w.label + '</div>' +
-              '<div class="btrack">' +
-                '<div class="bfill '+(under?'u':'')+'" style="width:'+p+'%"></div>' +
-                '<div class="bnorm" style="left:'+np+'%;position:absolute;top:0;bottom:0;width:2px;background:var(--accent2);z-index:2"></div>' +
-              '</div>' +
-              '<div class="bval">' + w.timer.toFixed(1) + 't</div>' +
-            '</div>';
+  var wrap=document.getElementById('wkwrap'), W=wrap.clientWidth||700;
+  var H=160,pL=8,pR=8,pT=18,pB=30,iW=W-pL-pR,iH=H-pT-pB;
+  var vals=weekly.map(function(w){return w.timer;}), maxV=Math.max.apply(null,vals)+3, minV=10;
+  var xS=weekly.length>1?iW/(weekly.length-1):iW;
+  function yS(v){return pT+iH-(v-minV)/(maxV-minV)*iH;}
+  function xP(i){return pL+i*xS;}
+  var normY=yS(NORM_UGE), pts=weekly.map(function(w,i){return xP(i)+','+yS(w.timer);}).join(' ');
+  var ac=xP(weekly.length-1)+','+(pT+iH)+' '+xP(0)+','+(pT+iH);
+  var lp=weekly.map(function(w,i){return (i===0?'M':'L')+xP(i)+','+yS(w.timer);}).join(' ');
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fffb2" stop-opacity="0.25"/><stop offset="100%" stop-color="#7fffb2" stop-opacity="0.02"/></linearGradient></defs>'+
+    '<line x1="'+pL+'" y1="'+normY+'" x2="'+(W-pR)+'" y2="'+normY+'" stroke="#ff7f6e" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>'+
+    '<text x="'+(W-pR-2)+'" y="'+(normY-4)+'" text-anchor="end" font-size="9" fill="#ff7f6e" opacity="0.7" font-family="DM Mono,monospace">norm '+NORM_UGE+'t</text>'+
+    '<polygon points="'+pts+' '+ac+'" fill="url(#ag)"/>'+
+    '<path d="'+lp+'" fill="none" stroke="#7fffb2" stroke-width="2" stroke-linejoin="round"/>';
+  weekly.forEach(function(w,i){
+    var x=xP(i),y=yS(w.timer),show=(i%2===0||i===weekly.length-1);
+    svg+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+(w.timer>=NORM_UGE?'#7fffb2':'#ff7f6e')+'" stroke="#0f0f13" stroke-width="1.5"><title>'+w.label+': '+w.timer+'t</title></circle>';
+    if(show) svg+='<text x="'+x+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#6b6b80" font-family="DM Mono,monospace">'+w.label+'</text>';
   });
-  html += '</div>';
-  wrap.innerHTML = html;
-}
-
-function renderDayBars(days) {
-  var dagNavne = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
-  var dagIdx   = { mandag:0, tirsdag:1, onsdag:2, torsdag:3, fredag:4, lordag:5, lørdag:5, sondag:6, søndag:6 };
-  var sums  = [0,0,0,0,0,0,0];
-  var cnts  = [0,0,0,0,0,0,0];
-  days.filter(function(x){ return x.timer > 0; }).forEach(function(x) {
-    var idx = dagIdx[x.dag];
-    if (idx !== undefined) { sums[idx] += x.timer; cnts[idx]++; }
-  });
-  var avgs = sums.map(function(s,i){ return cnts[i] > 0 ? Math.round(s/cnts[i]*100)/100 : 0; });
-  var maxA = Math.max.apply(null, avgs.concat([NORM_DAG]));
-  var el = document.getElementById('daybars');
-  el.innerHTML = avgs.map(function(a,i) {
-    var h = maxA > 0 ? Math.round(a / maxA * 80) : 0;
-    var we = i >= 5;
-    return '<div class="dcol">' +
-             '<div class="dval">' + (a > 0 ? a.toFixed(1) : '') + '</div>' +
-             '<div class="dbar '+(we?'we':'')+'" style="height:'+Math.max(h,a>0?4:0)+'px"></div>' +
-             '<div class="dlbl">' + dagNavne[i] + '</div>' +
-           '</div>';
-  }).join('');
-}
-
-function renderRecent(days) {
-  var tbl = document.getElementById('recenttbl');
-  var worked = days.filter(function(x){ return x.timer > 0; });
-  var recent = worked.slice(-10).reverse();
-  if (recent.length === 0) { tbl.innerHTML = '<tr><td style="color:var(--muted);font-size:11px">Ingen registrerede dage</td></tr>'; return; }
-  var capDag = function(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; };
-  var html = '<thead><tr>' +
-    '<th>Dato</th><th>Dag</th><th>Timer</th><th>Status</th>' +
-    '</tr></thead><tbody>';
-  recent.forEach(function(x) {
-    var over = x.timer > NORM_DAG;
-    html += '<tr>' +
-      '<td>' + new Date(x.dato).toLocaleDateString('da-DK',{day:'numeric',month:'short'}) + '</td>' +
-      '<td style="color:var(--muted)">' + capDag(x.dag) + '</td>' +
-      '<td>' + x.timer.toFixed(1) + 't</td>' +
-      '<td><span class="pill '+(over?'h':'')+'">' + (over ? '+' : '') + (x.timer - NORM_DAG).toFixed(1) + 't</span></td>' +
-    '</tr>';
-  });
-  html += '</tbody>';
-  tbl.innerHTML = html;
+  wrap.innerHTML=svg+'</svg>';
 }
 
 function renderHeatmap(days) {
-  var grid = document.getElementById('heatmap');
-  if (!days || days.length === 0) { grid.innerHTML = ''; return; }
-  // Byg et map dato -> timer
-  var dmap = {};
-  days.forEach(function(x){ if (x.timer > 0) dmap[x.dato] = x.timer; });
-  var maxH = Math.max.apply(null, Object.values(dmap).concat([1]));
-
-  // Start fra den første søndag >= startdato
-  var start = new Date(days[0].dato + 'T00:00:00');
-  while (start.getDay() !== 0) start.setDate(start.getDate() - 1);
-  var end = new Date(days[days.length-1].dato + 'T00:00:00');
-  while (end.getDay() !== 6) end.setDate(end.getDate() + 1);
-
-  var html = '';
-  var cur = new Date(start);
-  while (cur <= end) {
-    html += '<div class="hmcol">';
-    for (var d = 0; d < 7; d++) {
-      var iso = cur.toISOString().slice(0,10);
-      var h = dmap[iso] || 0;
-      var intensity = h > 0 ? Math.max(0.15, h / maxH) : 0;
-      var bg = h > 0
-        ? 'background:color-mix(in srgb,#7fffb2 ' + Math.round(intensity*100) + '%,var(--surface2))'
-        : 'background:var(--surface2)';
-      var title = h > 0 ? iso + ': ' + h.toFixed(1) + 't' : iso;
-      html += '<div class="hmcell" style="' + bg + '" title="' + title + '"></div>';
-      cur.setDate(cur.getDate() + 1);
-    }
-    html += '</div>';
+  if (!days.length) return;
+  var dmap={};
+  days.forEach(function(d){dmap[d.dato]=d.timer;});
+  var minDate=new Date(days[0].d); minDate.setDate(1);
+  var maxDate=new Date(days[days.length-1].d);
+  var maxH=Math.max.apply(null,days.map(function(d){return d.timer;}).concat([1]));
+  var cur=new Date(minDate);
+  while(cur.getDay()!==1) cur.setDate(cur.getDate()-1);
+  var el=document.getElementById('heatmap'); el.innerHTML='';
+  var lblCol=document.createElement('div'); lblCol.className='hmcol';
+  ['M','T','O','T','F','L','S'].forEach(function(l){
+    var d=document.createElement('div');
+    d.style.cssText='width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b6b80';
+    d.textContent=l; lblCol.appendChild(d);
+  });
+  el.appendChild(lblCol);
+  var end=new Date(maxDate); end.setDate(end.getDate()+8);
+  var col=[],cols=[];
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    col.push({ds:ds,h:dmap[ds]||0,inRange:cur>=minDate&&cur<=maxDate});
+    if(col.length===7){cols.push(col);col=[];}
+    cur.setDate(cur.getDate()+1);
   }
-  grid.innerHTML = html;
+  if(col.length){while(col.length<7)col.push({ds:'',h:0,inRange:false});cols.push(col);}
+  cols.forEach(function(col){
+    var colEl=document.createElement('div'); colEl.className='hmcol';
+    col.forEach(function(item){
+      var cell=document.createElement('div'); cell.className='hmcell';
+      if(item.inRange&&item.h>0){
+        cell.style.background='color-mix(in srgb, #7fffb2 '+Math.round((item.h/maxH)*90+10)+'%, #22222c)';
+        var dt=new Date(item.ds); cell.title=(dt.getDate())+'/'+(dt.getMonth()+1)+': '+item.h.toFixed(1)+'t';
+      } else if(!item.inRange||!item.ds){ cell.style.opacity='0'; }
+      colEl.appendChild(cell);
+    });
+    el.appendChild(colEl);
+  });
 }
 </script>
 </body>
